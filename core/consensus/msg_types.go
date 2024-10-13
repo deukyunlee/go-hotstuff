@@ -12,21 +12,24 @@ type PrepareMsg struct {
 	SequenceID int64       `json:"sequenceID"`
 	Digest     string      `json:"digest"`
 	RequestMsg *RequestMsg `json:"requestMsg"`
-	NodeID     string      `json:"nodeID"`
+	NodeID     int         `json:"nodeID"`
+	Signature  string      `json:"signature"` // Digital signature for message authenticity
 }
 
 type ConsensusMsg struct {
 	ViewID     int64   `json:"viewID"`
 	SequenceID int64   `json:"sequenceID"`
 	Digest     string  `json:"digest"`
-	NodeID     string  `json:"nodeID"`
+	NodeID     int     `json:"nodeID"`
 	MsgType    MsgType `json:"msgType"`
+	Signature  string  `json:"signature"`
 }
 
 type TimeoutMsg struct {
 	ViewID     int64  `json:"viewID"`
 	SequenceID int64  `json:"sequenceID"`
-	NodeID     string `json:"nodeID"`
+	NodeID     int    `json:"nodeID"`
+	Reason     string `json:"reason"`
 }
 
 type MsgType int

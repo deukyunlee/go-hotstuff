@@ -24,3 +24,6 @@ go.work.sum
 */logs/
 */config/
 /.idea/
+
+# build file
+hotstuff

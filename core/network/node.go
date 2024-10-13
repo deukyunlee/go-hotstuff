@@ -18,8 +18,8 @@ type MsgBuffer struct {
 }
 
 type Node struct {
-	NodeID        string
-	NodeTable     map[string]string // key=nodeID, value=url
+	NodeID        int
+	NodeTable     map[int]string // key=nodeID, value=url
 	View          *View
 	CurrentState  *consensus.State
 	CommittedMsgs []*consensus.RequestMsg
@@ -36,16 +36,16 @@ type View struct {
 
 const ResolvingTimeDuration = time.Second
 
-func NewNode(nodeID string) *Node {
+func NewNode(nodeID int) *Node {
 	const viewID = 10000000000
 
 	node := &Node{
 		NodeID: nodeID,
-		NodeTable: map[string]string{
-			"T1": "localhost:1111",
-			"T2": "localhost:1112",
-			"T3": "localhost:1113",
-			"T4": "localhost:1114",
+		NodeTable: map[int]string{
+			1: "localhost:1111",
+			2: "localhost:1112",
+			3: "localhost:1113",
+			4: "localhost:1114",
 		},
 		View: &View{
 			ID:      viewID,
@@ -76,8 +76,8 @@ func NewNode(nodeID string) *Node {
 	return node
 }
 
-func (node *Node) Broadcast(msg interface{}, path string) map[string]error {
-	errorMap := make(map[string]error)
+func (node *Node) Broadcast(msg interface{}, path string) map[int]error {
+	errorMap := make(map[int]error)
 
 	for nodeID, url := range node.NodeTable {
 		if nodeID == node.NodeID {
@@ -261,6 +261,8 @@ func (node *Node) handleErrors(errs []error) {
 }
 
 func send(url string, msg []byte) {
+	//TODO: change to TCP socket
+
 	buff := bytes.NewBuffer(msg)
 	http.Post("http://"+url, "application/json", buff)
 }

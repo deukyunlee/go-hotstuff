@@ -1,11 +1,18 @@
 package network
 
 import (
-	"deukyunlee/hotstuff/core/consensus"
-	"deukyunlee/hotstuff/errorhandler"
-	"encoding/json"
-	"fmt"
-	"net/http"
+	"bufio"
+	"deukyunlee/hotstuff/logging"
+	"net"
+	"strings"
+	"sync"
+	"time"
+)
+
+const TcpNetworkType string = "tcp"
+
+var (
+	logger = logging.GetLogger()
 )
 
 type Server struct {
@@ -13,89 +20,125 @@ type Server struct {
 	node *Node
 }
 
-func NewServer(nodeID string) *Server {
-	node := NewNode(nodeID)
-	if node.NodeTable[nodeID] == "" {
+var NodeTable = map[int]string{
+	1: "localhost:1111",
+	2: "localhost:1112",
+	3: "localhost:1113",
+	4: "localhost:1114",
+}
+
+func StartNewServer() {
+
+	var wg sync.WaitGroup
+
+	for id, address := range NodeTable {
+		wg.Add(1)
+		go startNode(id, address, &wg)
+	}
+}
+
+// startServer starts the TCP server for the node
+func startServer(nodeId int, address string) {
+	ln, err := net.Listen(TcpNetworkType, address)
+	if err != nil {
+		logger.Errorf("Node %d: Error starting server: %v\n", nodeId, err)
+		return
+	}
+	defer func(ln net.Listener) {
+		err := ln.Close()
+		if err != nil {
+			logger.Errorf("Node %d: Error closing listener: %v\n", nodeId, err)
+		}
+	}(ln)
+
+	node := NewNode(nodeId)
+	if node.NodeTable[nodeId] == "" {
 		panic("Unable to get server info")
 	}
 
-	server := &Server{node.NodeTable[nodeID], node}
+	server := &Server{node.NodeTable[nodeId], node}
 
-	server.setRoute()
-
-	return server
-}
-
-func (server *Server) Start() {
-	fmt.Printf("Starting server %s...\n", server.url)
-	if err := http.ListenAndServe(server.url, nil); err != nil {
-		fmt.Println(err)
-		return
+	logger.Infof("Node %d: Listening on %s\n", nodeId, address)
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			logger.Errorf("Node %d: Error accepting connection: %v\n", nodeId, err)
+			continue
+		}
+		server.setRoute(conn)
+		go handleConnection(nodeId, conn)
 	}
 }
 
-func (server *Server) setRoute() {
-	http.HandleFunc("/health", server.healthCheck)
-	http.HandleFunc("/req", server.getReq)
-	http.HandleFunc("/prepare", server.getPrepare)
-	http.HandleFunc("/precommit", server.getPreCommit)
-	http.HandleFunc("/commit", server.getCommit)
-	http.HandleFunc("/decide", server.getDecide)
+// handleConnection handles incoming connections to the server
+func handleConnection(id int, conn net.Conn) {
+	defer func(conn net.Conn) {
+		err := conn.Close()
+		if err != nil {
+			logger.Errorf("Node %d: Error closing connection: %v\n", id, err)
+		}
+	}(conn)
+	logger.Infof("Node %d: Accepted connection from %s\n", id, conn.RemoteAddr().String())
+
+	buffer := make([]byte, 1024)
+	n, err := conn.Read(buffer)
+	if err == nil {
+		logger.Errorf("Node %d: Received message: %s\n", id, string(buffer[:n]))
+	}
 }
 
-func (server *Server) healthCheck(w http.ResponseWriter, r *http.Request) {
-	_, err := w.Write([]byte("Server is healthy!"))
+// startNode starts both server and client for a given node
+func startNode(nodeId int, address string, wg *sync.WaitGroup) {
+	defer wg.Done()
 
+	go startServer(nodeId, address)
+
+	// Delay to ensure server is up before clients attempt connection
+	time.Sleep(1 * time.Second)
+
+	for otherID, otherAddress := range NodeTable {
+		if otherID != nodeId {
+			startClient(nodeId, otherID, otherAddress)
+		}
+	}
+}
+
+// startClient connects to another node
+func startClient(id, otherID int, address string) {
+	conn, err := net.Dial(TcpNetworkType, address)
 	if err != nil {
-		errorhandler.LogError(errorhandler.HTTP_WRITE_CONTENT_ERROR, err)
+		logger.Errorf("Node %d: Error connecting to Node %d at %s: %v\n", id, otherID, address, err)
 		return
 	}
+	defer func(conn net.Conn) {
+		err := conn.Close()
+		if err != nil {
+			logger.Errorf("Node %d: Error closing connection: %v\n", id, err)
+		}
+	}(conn)
+
+	logger.Infof("Node %d: Connected to Node %d at %s\n", id, otherID, address)
+
+	//_, err = conn.Write([]byte("req"))
+	//if err != nil {
+	//	logger.Errorf("Node %d: Error sending message to Node %d: %v\n", id, otherID, err)
+	//}
 }
 
-func (server *Server) getReq(writer http.ResponseWriter, request *http.Request) {
-	var msg consensus.RequestMsg
-	err := json.NewDecoder(request.Body).Decode(&msg)
-	if err != nil {
-		fmt.Println(err)
-		return
+func (server *Server) setRoute(conn net.Conn) {
+	defer func(conn net.Conn) {
+		err := conn.Close()
+		if err != nil {
+			logger.Errorf("Failed to close connection on %s, %s", conn.RemoteAddr().String(), err.Error())
+		}
+	}(conn)
+
+	scanner := bufio.NewScanner(conn)
+
+	for scanner.Scan() {
+		msg := strings.TrimSpace(scanner.Text())
+		logger.Info(msg)
+
+		server.node.MsgEntrance <- &msg
 	}
-
-	server.node.MsgEntrance <- &msg
-}
-
-func (server *Server) getPrepare(writer http.ResponseWriter, request *http.Request) {
-	var msg consensus.PrepareMsg
-	err := json.NewDecoder(request.Body).Decode(&msg)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	server.node.MsgEntrance <- &msg
-}
-
-func (server *Server) getPreCommit(writer http.ResponseWriter, request *http.Request) {
-	var msg consensus.ConsensusMsg
-	err := json.NewDecoder(request.Body).Decode(&msg)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	server.node.MsgEntrance <- &msg
-}
-
-func (server *Server) getCommit(writer http.ResponseWriter, request *http.Request) {
-	var msg consensus.ConsensusMsg
-	err := json.NewDecoder(request.Body).Decode(&msg)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	server.node.MsgEntrance <- &msg
-}
-
-func (server *Server) getDecide(writer http.ResponseWriter, request *http.Request) {
-	// TODO: develop
 }
