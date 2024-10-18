@@ -5,6 +5,7 @@ import (
 	"deukyunlee/hotstuff/core/consensus"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 )
@@ -19,7 +20,6 @@ type MsgBuffer struct {
 
 type Node struct {
 	NodeID        int
-	NodeTable     map[int]string // key=nodeID, value=url
 	View          *View
 	CurrentState  *consensus.State
 	CommittedMsgs []*consensus.RequestMsg
@@ -27,6 +27,7 @@ type Node struct {
 	MsgEntrance   chan interface{}
 	MsgDelivery   chan interface{}
 	Alarm         chan bool
+	Connections   []net.Conn
 }
 
 type View struct {
@@ -37,19 +38,13 @@ type View struct {
 const ResolvingTimeDuration = time.Second
 
 func NewNode(nodeID int) *Node {
-	const viewID = 10000000000
+	const startViewId = 10000000000
 
 	node := &Node{
 		NodeID: nodeID,
-		NodeTable: map[int]string{
-			1: "localhost:1111",
-			2: "localhost:1112",
-			3: "localhost:1113",
-			4: "localhost:1114",
-		},
 		View: &View{
-			ID:      viewID,
-			Primary: "T1",
+			ID:      startViewId,
+			Primary: "1",
 		},
 
 		CurrentState:  nil,
@@ -79,7 +74,7 @@ func NewNode(nodeID int) *Node {
 func (node *Node) Broadcast(msg interface{}, path string) map[int]error {
 	errorMap := make(map[int]error)
 
-	for nodeID, url := range node.NodeTable {
+	for nodeID, url := range NodeTable {
 		if nodeID == node.NodeID {
 			continue
 		}
@@ -358,7 +353,7 @@ func (node *Node) resolveDecideMsg(msgs []*consensus.ConsensusMsg) []error {
 }
 
 func (node *Node) hasQuorumForPrepare() bool {
-	totalNodes := len(node.NodeTable)
+	totalNodes := len(NodeTable)
 
 	//The quorum size is usually calculated as (2/3) * N + 1, where N is the total number of nodes.
 	quorumSize := (2 * totalNodes / 3) + 1

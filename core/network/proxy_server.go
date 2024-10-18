@@ -3,9 +3,9 @@ package network
 import (
 	"bufio"
 	"deukyunlee/hotstuff/logging"
+	"fmt"
 	"net"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -20,6 +20,10 @@ type Server struct {
 	node *Node
 }
 
+type Network struct {
+	Nodes []*Node
+}
+
 var NodeTable = map[int]string{
 	1: "localhost:1111",
 	2: "localhost:1112",
@@ -27,14 +31,30 @@ var NodeTable = map[int]string{
 	4: "localhost:1114",
 }
 
-func StartNewServer() {
+func StartNewServer(nodeId int) {
+	startNode(nodeId, NodeTable[nodeId])
+}
 
-	var wg sync.WaitGroup
+// startNode starts both server and client for a given node
+func startNode(nodeId int, address string) *Node {
 
-	for id, address := range NodeTable {
-		wg.Add(1)
-		go startNode(id, address, &wg)
+	node := NewNode(nodeId)
+
+	go startServer(nodeId, address)
+
+	// Delay to ensure server is up before clients attempt connection
+	time.Sleep(1 * time.Second)
+
+	for otherID, otherAddress := range NodeTable {
+		if otherID != nodeId {
+			conn := startClient(nodeId, otherID, otherAddress)
+
+			node.Connections = append(node.Connections, conn)
+		}
 	}
+
+	fmt.Println(node.Connections)
+	return node
 }
 
 // startServer starts the TCP server for the node
@@ -42,42 +62,33 @@ func startServer(nodeId int, address string) {
 	ln, err := net.Listen(TcpNetworkType, address)
 	if err != nil {
 		logger.Errorf("Node %d: Error starting server: %v\n", nodeId, err)
-		return
 	}
-	defer func(ln net.Listener) {
-		err := ln.Close()
-		if err != nil {
-			logger.Errorf("Node %d: Error closing listener: %v\n", nodeId, err)
-		}
-	}(ln)
 
-	node := NewNode(nodeId)
-	if node.NodeTable[nodeId] == "" {
+	defer ln.Close()
+	if NodeTable[nodeId] == "" {
 		panic("Unable to get server info")
 	}
 
-	server := &Server{node.NodeTable[nodeId], node}
+	//server := &Server{NodeTable[nodeId]}
 
-	logger.Infof("Node %d: Listening on %s\n", nodeId, address)
 	for {
+		logger.Infof("Waiting for connection on %s", address)
+
 		conn, err := ln.Accept()
 		if err != nil {
 			logger.Errorf("Node %d: Error accepting connection: %v\n", nodeId, err)
 			continue
 		}
-		server.setRoute(conn)
+		logger.Infof("Connection accepted from %s", conn.RemoteAddr().String())
+		//server.setRoute(conn)
+
 		go handleConnection(nodeId, conn)
 	}
+	//return node
 }
 
 // handleConnection handles incoming connections to the server
 func handleConnection(id int, conn net.Conn) {
-	defer func(conn net.Conn) {
-		err := conn.Close()
-		if err != nil {
-			logger.Errorf("Node %d: Error closing connection: %v\n", id, err)
-		}
-	}(conn)
 	logger.Infof("Node %d: Accepted connection from %s\n", id, conn.RemoteAddr().String())
 
 	buffer := make([]byte, 1024)
@@ -87,52 +98,19 @@ func handleConnection(id int, conn net.Conn) {
 	}
 }
 
-// startNode starts both server and client for a given node
-func startNode(nodeId int, address string, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	go startServer(nodeId, address)
-
-	// Delay to ensure server is up before clients attempt connection
-	time.Sleep(1 * time.Second)
-
-	for otherID, otherAddress := range NodeTable {
-		if otherID != nodeId {
-			startClient(nodeId, otherID, otherAddress)
-		}
-	}
-}
-
 // startClient connects to another node
-func startClient(id, otherID int, address string) {
+func startClient(id, otherID int, address string) net.Conn {
 	conn, err := net.Dial(TcpNetworkType, address)
 	if err != nil {
 		logger.Errorf("Node %d: Error connecting to Node %d at %s: %v\n", id, otherID, address, err)
-		return
+		return nil
 	}
-	defer func(conn net.Conn) {
-		err := conn.Close()
-		if err != nil {
-			logger.Errorf("Node %d: Error closing connection: %v\n", id, err)
-		}
-	}(conn)
 
-	logger.Infof("Node %d: Connected to Node %d at %s\n", id, otherID, address)
-
-	//_, err = conn.Write([]byte("req"))
-	//if err != nil {
-	//	logger.Errorf("Node %d: Error sending message to Node %d: %v\n", id, otherID, err)
-	//}
+	logger.Infof("Node %d: Connected to Node %d [LOCAL: %s] [REMOTE: %s]\n", id, otherID, conn.LocalAddr(), conn.RemoteAddr())
+	return conn
 }
 
 func (server *Server) setRoute(conn net.Conn) {
-	defer func(conn net.Conn) {
-		err := conn.Close()
-		if err != nil {
-			logger.Errorf("Failed to close connection on %s, %s", conn.RemoteAddr().String(), err.Error())
-		}
-	}(conn)
-
 	scanner := bufio.NewScanner(conn)
 
 	for scanner.Scan() {
