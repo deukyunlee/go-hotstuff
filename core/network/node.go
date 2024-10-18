@@ -1,12 +1,14 @@
 package network
 
 import (
+	"bufio"
 	"bytes"
 	"deukyunlee/hotstuff/core/consensus"
 	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -417,4 +419,15 @@ func (node *Node) GetCommit(commitMsg *consensus.ConsensusMsg) error {
 
 func (node *Node) GetDecide(commitMsg *consensus.ConsensusMsg) error {
 	return nil
+}
+
+func (node *Node) setRoute(conn net.Conn) {
+	scanner := bufio.NewScanner(conn)
+
+	for scanner.Scan() {
+		msg := strings.TrimSpace(scanner.Text())
+		logger.Info(msg)
+
+		node.MsgEntrance <- &msg
+	}
 }

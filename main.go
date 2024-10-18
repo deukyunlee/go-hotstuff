@@ -21,7 +21,7 @@ func init() {
 }
 
 func main() {
-	network.StartNewServer(Id)
-	logger.Info("starting server")
+	node := network.StartNewNode(Id)
+	logger.Info("starting server: %v", node)
 	select {}
 }
