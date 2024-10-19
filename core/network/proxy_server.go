@@ -4,9 +4,7 @@ import (
 	"deukyunlee/hotstuff/core/consensus"
 	"deukyunlee/hotstuff/logging"
 	"encoding/json"
-	"fmt"
 	"net"
-	"reflect"
 	"time"
 )
 
@@ -37,29 +35,11 @@ func setNode(nodeId int, address string) *Node {
 
 	go node.startServer(nodeId, address)
 
-	for otherID, otherAddress := range NodeTable {
-		if otherID != nodeId {
-			var conn net.Conn
-			var err error
-
-			for i := 0; i < RetryCount; i++ {
-				conn, err = node.startClient(nodeId, otherID, otherAddress)
-
-				if err == nil {
-					logger.Infof("Node %d: Connected to Node %d [LOCAL: %s] [REMOTE: %s]\n", nodeId, otherID, conn.LocalAddr(), conn.RemoteAddr())
-					node.Connections = append(node.Connections, conn)
-
-					//go node.listenForMessages(conn)
-					break
-				}
-
-				logger.Infof("Failed to connect to node %d (attempt %d/%d): %v\n", otherID, i+1, RetryCount, err)
-
-				time.Sleep(ConnectionDelay)
-			}
-
+	for otherId, otherAddress := range NodeTable {
+		if otherId != nodeId {
+			err := node.startClientWithRetry(nodeId, otherId, otherAddress)
 			if err != nil {
-				logger.Errorf("Failed to connect to node %d after %d attempts: %v\n", otherID, RetryCount, err)
+				logger.Errorf("Failed to connect to node %d after %d attempts: %v\n", otherId, RetryCount, err)
 				panic(err)
 			}
 		}
@@ -68,17 +48,24 @@ func setNode(nodeId int, address string) *Node {
 	return node
 }
 
-//func (node *Node) listenForMessages(conn net.Conn) {
-//	scanner := bufio.NewScanner(conn)
-//	for scanner.Scan() {
-//		msg := strings.TrimSpace(scanner.Text())
-//		logger.Infof("Client received Message: %s", msg)
-//	}
-//	if err := scanner.Err(); err != nil {
-//		logger.Errorf("Client: Error reading message from server: %v", err)
-//	}
-//	logger.Info("here 2")
-//}
+func (node *Node) startClientWithRetry(nodeId int, otherId int, otherAddress string) error {
+	var err error
+	var conn net.Conn
+	for i := 0; i < RetryCount; i++ {
+		conn, err = node.startClient(nodeId, otherId, otherAddress)
+
+		if err == nil {
+			logger.Infof("Node %d: Connected to Node %d [LOCAL: %s] [REMOTE: %s]\n", nodeId, otherId, conn.LocalAddr(), conn.RemoteAddr())
+			node.Connections = append(node.Connections, conn)
+			break
+		}
+
+		logger.Errorf("Failed to connect to node %d (attempt %d/%d): %v\n", otherId, i+1, RetryCount, err)
+
+		time.Sleep(ConnectionDelay)
+	}
+	return err
+}
 
 // startServer starts the TCP server for the node
 func (node *Node) startServer(nodeId int, address string) {
@@ -95,21 +82,7 @@ func (node *Node) startServer(nodeId int, address string) {
 	for {
 		logger.Infof("Waiting for connection on %s", address)
 
-		var conn net.Conn
-		var err error
-
-		for i := 0; i < RetryCount; i++ {
-			conn, err = ln.Accept()
-			if err == nil {
-				logger.Infof("Node %d: accepting connection: %v\n", nodeId, err)
-
-				break
-			}
-
-			logger.Errorf("Failed to connect to node %d (attempt %d/%d): %d\n", nodeId, i+1, RetryCount, err)
-
-			time.Sleep(ConnectionDelay)
-		}
+		conn, err := node.startServerWithRetry(nodeId, ln)
 
 		if err != nil {
 			logger.Errorf("Failed to connect to node %d after %d attempts: %d\n", nodeId, RetryCount, err)
@@ -120,6 +93,22 @@ func (node *Node) startServer(nodeId int, address string) {
 
 		go node.handleConnection(nodeId, conn)
 	}
+}
+
+func (node *Node) startServerWithRetry(nodeId int, ln net.Listener) (conn net.Conn, err error) {
+	for i := 0; i < RetryCount; i++ {
+		conn, err = ln.Accept()
+		if err == nil {
+			logger.Infof("Node %d: accepting connection: %v\n", nodeId, err)
+
+			break
+		}
+
+		logger.Errorf("Failed to connect to node %d (attempt %d/%d): %d\n", nodeId, i+1, RetryCount, err)
+
+		time.Sleep(ConnectionDelay)
+	}
+	return conn, err
 }
 
 // handleConnection handles incoming connections to the server
@@ -136,8 +125,6 @@ func (node *Node) handleConnection(id int, conn net.Conn) {
 		return
 	}
 
-	// Determine the message type based on some field, e.g., "MsgType"
-	//fmt.Println(rawMsg)
 	if rawMsgType, ok := rawMsg["msgType"].(float64); ok {
 
 		consensusMsgType := consensus.MsgType(int(rawMsgType))
@@ -167,14 +154,6 @@ func (node *Node) handleConnection(id int, conn net.Conn) {
 			logger.Errorf("Node %d: Unrecognized message type: %v", id, rawMsgType)
 		}
 	} else {
-		//msgType := consensus.MsgType(int(rawMsgType))
-
-		fmt.Println("here2")
-		//fmt.Println("test", msgType)
-		fmt.Println(reflect.TypeOf(rawMsgType))
-
-		fmt.Printf("msgType: %v\n", rawMsgType)
-		//fmt.Println(msgType == consensus.Request)
 		logger.Errorf("Node %d: MsgType field not found", id)
 	}
 }

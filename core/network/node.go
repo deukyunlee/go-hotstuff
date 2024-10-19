@@ -3,7 +3,6 @@ package network
 import (
 	"deukyunlee/hotstuff/core/consensus"
 	"encoding/json"
-	"fmt"
 	"net"
 	"time"
 )
@@ -103,12 +102,12 @@ func (node *Node) dispatchMsg() {
 		case msg := <-node.MsgEntrance:
 			err := node.routeMsg(msg)
 			if err != nil {
-				fmt.Println(err)
+				logger.Errorf("Error happend when routing: %v", err)
 			}
 		case <-node.Alarm:
 			err := node.routeMsgWhenAlarmed()
 			if err != nil {
-				fmt.Println(err)
+				logger.Errorf("Error happend when routing with alarm: %v", err)
 			}
 		}
 	}
@@ -252,7 +251,7 @@ func (node *Node) resolveMsg() {
 func (node *Node) handleErrors(errs []error) {
 	if len(errs) > 0 {
 		for _, err := range errs {
-			fmt.Println(err)
+			logger.Errorf("error handling consensus msg: %v", err.Error())
 		}
 	}
 }
@@ -365,10 +364,7 @@ func (node *Node) hasQuorumForPrepare() bool {
 
 func (node *Node) GetReq(reqMsg *consensus.RequestMsg) error {
 
-	//err := node.createStateForNewConsensus()
-	//if err != nil {
-	//	return err
-	//}
+	node.createStateForNewConsensus(reqMsg)
 
 	prePrepareMsg, err := node.CurrentState.StartConsensus(reqMsg)
 	if err != nil {
@@ -412,4 +408,11 @@ func (node *Node) GetCommit(commitMsg *consensus.ConsensusMsg) error {
 
 func (node *Node) GetDecide(commitMsg *consensus.ConsensusMsg) error {
 	return nil
+}
+
+func (node *Node) createStateForNewConsensus(reqMsg *consensus.RequestMsg) {
+	node.CurrentState.ViewID = node.View.ID
+	node.CurrentState.MsgLogs = nil
+	node.CurrentState.LastSequenceID = reqMsg.SequenceID
+	node.CurrentState.CurrentStage = consensus.Idle
 }
