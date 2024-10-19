@@ -27,7 +27,7 @@ func main() {
 	logger.Info("starting server: %v", node)
 	currentTime := time.Now().UnixNano()
 
-	err := node.Broadcast(consensus.RequestMsg{Timestamp: currentTime, ClientID: 1, Operation: "test", SequenceID: 0})
+	err := node.Broadcast(consensus.RequestMsg{MsgType: consensus.Request, Timestamp: currentTime, ClientID: 1, Operation: ", test", SequenceID: 0})
 	for id, er := range err {
 		logger.Errorf("[%d] error: %s", id, er.Error())
 	}

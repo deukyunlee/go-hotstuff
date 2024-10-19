@@ -1,12 +1,10 @@
 package network
 
 import (
-	"bytes"
 	"deukyunlee/hotstuff/core/consensus"
 	"encoding/json"
 	"fmt"
 	"net"
-	"net/http"
 	"time"
 )
 
@@ -119,7 +117,6 @@ func (node *Node) dispatchMsg() {
 func (node *Node) routeMsg(msg interface{}) []error {
 	switch m := msg.(type) {
 	case *consensus.RequestMsg:
-		fmt.Println("there")
 		node.processRequestMsg(m)
 
 	case *consensus.PrepareMsg:
@@ -258,13 +255,6 @@ func (node *Node) handleErrors(errs []error) {
 			fmt.Println(err)
 		}
 	}
-}
-
-func send(url string, msg []byte) {
-	//TODO: change to TCP socket
-
-	buff := bytes.NewBuffer(msg)
-	http.Post("http://"+url, "application/json", buff)
 }
 
 func (node *Node) resolvePrepareMsg(msgs []*consensus.PrepareMsg) []error {

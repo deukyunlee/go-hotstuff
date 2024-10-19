@@ -1,8 +1,12 @@
 package network
 
 import (
+	"deukyunlee/hotstuff/core/consensus"
 	"deukyunlee/hotstuff/logging"
+	"encoding/json"
+	"fmt"
 	"net"
+	"reflect"
 	"time"
 )
 
@@ -124,10 +128,54 @@ func (node *Node) handleConnection(id int, conn net.Conn) {
 
 	buffer := make([]byte, 1024)
 	n, err := conn.Read(buffer)
-	if err == nil {
-		logger.Infof("Node %d: Received message: %s\n", id, string(buffer[:n]))
-		node.MsgEntrance <- string(buffer[:n])
 
+	var rawMsg map[string]interface{}
+	err = json.Unmarshal(buffer[:n], &rawMsg)
+	if err != nil {
+		logger.Errorf("Node %d: Error unmarshalling message: %v", id, err)
+		return
+	}
+
+	// Determine the message type based on some field, e.g., "MsgType"
+	//fmt.Println(rawMsg)
+	if rawMsgType, ok := rawMsg["msgType"].(float64); ok {
+
+		consensusMsgType := consensus.MsgType(int(rawMsgType))
+		switch consensusMsgType {
+		case consensus.Request:
+			var reqMsg consensus.RequestMsg
+			err := json.Unmarshal(buffer[:n], &reqMsg)
+			if err != nil {
+				logger.Errorf("Node %d: Error unmarshalling message: %v", id, err)
+			}
+			node.MsgEntrance <- &reqMsg
+		case consensus.Prepare:
+			var prepareMsg consensus.PrepareMsg
+			err := json.Unmarshal(buffer[:n], &prepareMsg)
+			if err != nil {
+				logger.Errorf("Node %d: Error unmarshalling message: %v", id, err)
+			}
+			node.MsgEntrance <- &prepareMsg
+		case consensus.PreCommit, consensus.Commit, consensus.Decide:
+			var consensusMsg consensus.ConsensusMsg
+			err := json.Unmarshal(buffer[:n], &consensusMsg)
+			if err != nil {
+				logger.Errorf("Node %d: Error unmarshalling message: %v", id, err)
+			}
+			node.MsgEntrance <- &consensusMsg
+		default:
+			logger.Errorf("Node %d: Unrecognized message type: %v", id, rawMsgType)
+		}
+	} else {
+		//msgType := consensus.MsgType(int(rawMsgType))
+
+		fmt.Println("here2")
+		//fmt.Println("test", msgType)
+		fmt.Println(reflect.TypeOf(rawMsgType))
+
+		fmt.Printf("msgType: %v\n", rawMsgType)
+		//fmt.Println(msgType == consensus.Request)
+		logger.Errorf("Node %d: MsgType field not found", id)
 	}
 }
 

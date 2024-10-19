@@ -1,10 +1,11 @@
 package consensus
 
 type RequestMsg struct {
-	Timestamp  int64  `json:"timestamp"`
-	ClientID   int64  `json:"clientID"`
-	Operation  string `json:"operation"`
-	SequenceID int64  `json:"sequenceID"`
+	MsgType    MsgType `json:"msgType"`
+	Timestamp  int64   `json:"timestamp"`
+	ClientID   int64   `json:"clientID"`
+	Operation  string  `json:"operation"`
+	SequenceID int64   `json:"sequenceID"`
 }
 
 type PrepareMsg struct {
@@ -35,7 +36,8 @@ type TimeoutMsg struct {
 type MsgType int
 
 const (
-	Prepare MsgType = iota
+	Request MsgType = iota
+	Prepare
 	PreCommit
 	Commit
 	Decide
