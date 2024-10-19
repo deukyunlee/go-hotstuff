@@ -22,6 +22,8 @@ go.work
 go.work.sum
 
 ./logs/
+./logs/*
+
 */config/
 /.idea/
 

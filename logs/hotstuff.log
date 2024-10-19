@@ -1,119 +1,123 @@
-time="2024-10-19 10:40:59.477669" level=info msg="Waiting for connection on localhost:1111" file="proxy_server.go:96"
-time="2024-10-19 10:40:59.477679" level=info msg="Waiting for connection on localhost:1113" file="proxy_server.go:96"
-time="2024-10-19 10:40:59.478103" level=info msg="Node 3: Connected to Node 1 [LOCAL: 127.0.0.1:62598] [REMOTE: 127.0.0.1:1111]\n" file="proxy_server.go:190"
-time="2024-10-19 10:40:59.478477" level=info msg="Node 3: Connected to Node 1 [LOCAL: 127.0.0.1:62598] [REMOTE: 127.0.0.1:1111]\n" file="proxy_server.go:49"
-time="2024-10-19 10:40:59.478374" level=info msg="Waiting for connection on localhost:1114" file="proxy_server.go:96"
-time="2024-10-19 10:40:59.478334" level=info msg="Waiting for connection on localhost:1112" file="proxy_server.go:96"
-time="2024-10-19 10:40:59.478602" level=info msg="Node 1: accepting connection: <nil>\n" file="proxy_server.go:104"
-time="2024-10-19 10:40:59.478646" level=info msg="Connection accepted from 127.0.0.1:62598" file="proxy_server.go:119"
-time="2024-10-19 10:40:59.478669" level=info msg="Waiting for connection on localhost:1111" file="proxy_server.go:96"
-time="2024-10-19 10:40:59.478140" level=error msg="Node 1: Error connecting to Node 4 at localhost:1114: dial tcp [::1]:1114: connect: connection refused\n" file="proxy_server.go:186"
-time="2024-10-19 10:40:59.478724" level=info msg="Failed to connect to node 4 (attempt 1/5): dial tcp [::1]:1114: connect: connection refused\n" file="proxy_server.go:56"
-time="2024-10-19 10:40:59.478713" level=info msg="Node 1: Accepted connection from 127.0.0.1:62598\n" file="proxy_server.go:127"
-time="2024-10-19 10:40:59.478809" level=info msg="Node 4: Connected to Node 1 [LOCAL: 127.0.0.1:62606] [REMOTE: 127.0.0.1:1111]\n" file="proxy_server.go:190"
-time="2024-10-19 10:40:59.478819" level=info msg="Node 1: accepting connection: <nil>\n" file="proxy_server.go:104"
-time="2024-10-19 10:40:59.478843" level=info msg="Node 4: Connected to Node 1 [LOCAL: 127.0.0.1:62606] [REMOTE: 127.0.0.1:1111]\n" file="proxy_server.go:49"
-time="2024-10-19 10:40:59.478849" level=info msg="Connection accepted from 127.0.0.1:62606" file="proxy_server.go:119"
-time="2024-10-19 10:40:59.478841" level=info msg="Node 2: Connected to Node 3 [LOCAL: 127.0.0.1:62607] [REMOTE: 127.0.0.1:1113]\n" file="proxy_server.go:190"
-time="2024-10-19 10:40:59.478874" level=info msg="Waiting for connection on localhost:1111" file="proxy_server.go:96"
-time="2024-10-19 10:40:59.478832" level=info msg="Node 3: accepting connection: <nil>\n" file="proxy_server.go:104"
-time="2024-10-19 10:40:59.478888" level=info msg="Node 2: Connected to Node 3 [LOCAL: 127.0.0.1:62607] [REMOTE: 127.0.0.1:1113]\n" file="proxy_server.go:49"
-time="2024-10-19 10:40:59.478903" level=info msg="Node 1: Accepted connection from 127.0.0.1:62606\n" file="proxy_server.go:127"
-time="2024-10-19 10:40:59.478915" level=info msg="Connection accepted from 127.0.0.1:62607" file="proxy_server.go:119"
-time="2024-10-19 10:40:59.478939" level=info msg="Waiting for connection on localhost:1113" file="proxy_server.go:96"
-time="2024-10-19 10:40:59.478973" level=info msg="Node 3: Accepted connection from 127.0.0.1:62607\n" file="proxy_server.go:127"
-time="2024-10-19 10:40:59.482068" level=info msg="Node 2: Connected to Node 4 [LOCAL: 127.0.0.1:62611] [REMOTE: 127.0.0.1:1114]\n" file="proxy_server.go:190"
-time="2024-10-19 10:40:59.482111" level=info msg="Node 2: Connected to Node 4 [LOCAL: 127.0.0.1:62611] [REMOTE: 127.0.0.1:1114]\n" file="proxy_server.go:49"
-time="2024-10-19 10:40:59.482095" level=info msg="Node 3: Connected to Node 2 [LOCAL: 127.0.0.1:62612] [REMOTE: 127.0.0.1:1112]\n" file="proxy_server.go:190"
-time="2024-10-19 10:40:59.482148" level=info msg="Node 3: Connected to Node 2 [LOCAL: 127.0.0.1:62612] [REMOTE: 127.0.0.1:1112]\n" file="proxy_server.go:49"
-time="2024-10-19 10:40:59.482163" level=info msg="Node 4: Connected to Node 2 [LOCAL: 127.0.0.1:62613] [REMOTE: 127.0.0.1:1112]\n" file="proxy_server.go:190"
-time="2024-10-19 10:40:59.482123" level=info msg="Node 2: accepting connection: <nil>\n" file="proxy_server.go:104"
-time="2024-10-19 10:40:59.482228" level=info msg="Node 4: Connected to Node 2 [LOCAL: 127.0.0.1:62613] [REMOTE: 127.0.0.1:1112]\n" file="proxy_server.go:49"
-time="2024-10-19 10:40:59.482249" level=info msg="Connection accepted from 127.0.0.1:62612" file="proxy_server.go:119"
-time="2024-10-19 10:40:59.482271" level=info msg="Waiting for connection on localhost:1112" file="proxy_server.go:96"
-time="2024-10-19 10:40:59.482176" level=info msg="Node 4: accepting connection: <nil>\n" file="proxy_server.go:104"
-time="2024-10-19 10:40:59.482297" level=info msg="Connection accepted from 127.0.0.1:62611" file="proxy_server.go:119"
-time="2024-10-19 10:40:59.482308" level=info msg="Node 2: accepting connection: <nil>\n" file="proxy_server.go:104"
-time="2024-10-19 10:40:59.482327" level=info msg="Connection accepted from 127.0.0.1:62613" file="proxy_server.go:119"
-time="2024-10-19 10:40:59.482325" level=info msg="Waiting for connection on localhost:1114" file="proxy_server.go:96"
-time="2024-10-19 10:40:59.482344" level=info msg="Waiting for connection on localhost:1112" file="proxy_server.go:96"
-time="2024-10-19 10:40:59.482369" level=info msg="Node 4: Accepted connection from 127.0.0.1:62611\n" file="proxy_server.go:127"
-time="2024-10-19 10:40:59.482359" level=info msg="Node 2: Accepted connection from 127.0.0.1:62612\n" file="proxy_server.go:127"
-time="2024-10-19 10:40:59.482372" level=info msg="Node 2: Accepted connection from 127.0.0.1:62613\n" file="proxy_server.go:127"
-time="2024-10-19 10:40:59.484056" level=info msg="Node 3: Connected to Node 4 [LOCAL: 127.0.0.1:62618] [REMOTE: 127.0.0.1:1114]\n" file="proxy_server.go:190"
-time="2024-10-19 10:40:59.484064" level=info msg="Node 2: Connected to Node 1 [LOCAL: 127.0.0.1:62617] [REMOTE: 127.0.0.1:1111]\n" file="proxy_server.go:190"
-time="2024-10-19 10:40:59.484087" level=info msg="Node 3: Connected to Node 4 [LOCAL: 127.0.0.1:62618] [REMOTE: 127.0.0.1:1114]\n" file="proxy_server.go:49"
-time="2024-10-19 10:40:59.484104" level=info msg="Node 2: Connected to Node 1 [LOCAL: 127.0.0.1:62617] [REMOTE: 127.0.0.1:1111]\n" file="proxy_server.go:49"
-time="2024-10-19 10:40:59.484096" level=info msg="Node 1: accepting connection: <nil>\n" file="proxy_server.go:104"
-time="2024-10-19 10:40:59.484103" level=info msg="Node 4: Connected to Node 3 [LOCAL: 127.0.0.1:62619] [REMOTE: 127.0.0.1:1113]\n" file="proxy_server.go:190"
-time="2024-10-19 10:40:59.484131" level=info msg="Connection accepted from 127.0.0.1:62617" file="proxy_server.go:119"
-time="2024-10-19 10:40:59.484153" level=info msg="Node 4: Connected to Node 3 [LOCAL: 127.0.0.1:62619] [REMOTE: 127.0.0.1:1113]\n" file="proxy_server.go:49"
-time="2024-10-19 10:40:59.484157" level=info msg="starting server: %v&{2 0x1400011c0d8 <nil> [] 0x14000136080 0x140001000c0 0x14000100120 0x14000100180 [0x140000b0020 0x140000b0030 0x14000054010]}" file="main.go:27"
-time="2024-10-19 10:40:59.484157" level=info msg="starting server: %v&{3 0x1400011c0d8 <nil> [] 0x14000136080 0x140001000c0 0x14000100120 0x14000100180 [0x14000182020 0x14000182030 0x14000182040]}" file="main.go:27"
-time="2024-10-19 10:40:59.484160" level=info msg="Waiting for connection on localhost:1111" file="proxy_server.go:96"
-time="2024-10-19 10:40:59.484226" level=info msg="Node 3: accepting connection: <nil>\n" file="proxy_server.go:104"
-time="2024-10-19 10:40:59.484248" level=info msg="Connection accepted from 127.0.0.1:62619" file="proxy_server.go:119"
-time="2024-10-19 10:40:59.484238" level=info msg="starting server: %v&{4 0x140001240d8 <nil> [] 0x1400013e080 0x140001080c0 0x14000108120 0x14000108180 [0x1400011c058 0x14000206000 0x14000096000]}" file="main.go:27"
-time="2024-10-19 10:40:59.484268" level=info msg="Waiting for connection on localhost:1113" file="proxy_server.go:96"
-time="2024-10-19 10:40:59.484296" level=info msg="Node 3: Accepted connection from 127.0.0.1:62619\n" file="proxy_server.go:127"
-time="2024-10-19 10:40:59.484201" level=info msg="Node 1: Accepted connection from 127.0.0.1:62617\n" file="proxy_server.go:127"
-time="2024-10-19 10:40:59.484371" level=info msg="Node 4: accepting connection: <nil>\n" file="proxy_server.go:104"
-time="2024-10-19 10:40:59.484406" level=info msg="Connection accepted from 127.0.0.1:62618" file="proxy_server.go:119"
-time="2024-10-19 10:40:59.484436" level=info msg="Waiting for connection on localhost:1114" file="proxy_server.go:96"
-time="2024-10-19 10:40:59.484465" level=info msg="Node 4: Accepted connection from 127.0.0.1:62618\n" file="proxy_server.go:127"
-panic: runtime error: invalid memory address or nil pointer dereferencepanic: 
-runtime error: invalid memory address or nil pointer dereference[signal 
-SIGSEGV: segmentation violation[signal  code=SIGSEGV: segmentation violation0x2 code= addr=0x20x10 addr= pc=0x100x1008921a4 pc=]
-0x1005421a4
-]
-goroutine 
-37goroutine panic: 21runtime error: invalid memory address or nil pointer dereferencepanic:  [ [runtime error: invalid memory address or nil pointer dereferencerunning
-]:
-[signal 
-SIGSEGV: segmentation violationrunning[signal  code=]:
-SIGSEGV: segmentation violation0x2 code= addr=0x20x10 addr= pc=0x100x102be61a4deukyunlee/hotstuff/core/consensus.(*State).StartConsensusdeukyunlee/hotstuff/core/consensus.(*State).StartConsensus((0x00x0, ]
-, 0x140002023c00x140000944e0)
-)
-		/Users/dukedev/hotstuff/core/consensus/hotstuff_impl.go: pc=420x1044361a4 +]
+time="2024-10-19 10:42:33.083433" level=info msg="Waiting for connection on localhost:1114" file="proxy_server.go:96"
+time="2024-10-19 10:42:33.083609" level=info msg="Waiting for connection on localhost:1112" file="proxy_server.go:96"
+time="2024-10-19 10:42:33.083495" level=info msg="Waiting for connection on localhost:1111" file="proxy_server.go:96"
+time="2024-10-19 10:42:33.083520" level=info msg="Waiting for connection on localhost:1113" file="proxy_server.go:96"
+time="2024-10-19 10:42:33.084083" level=info msg="Node 4: Connected to Node 3 [LOCAL: 127.0.0.1:63150] [REMOTE: 127.0.0.1:1113]\n" file="proxy_server.go:190"
+time="2024-10-19 10:42:33.084528" level=info msg="Node 2: accepting connection: <nil>\n" file="proxy_server.go:104"
+time="2024-10-19 10:42:33.084533" level=info msg="Node 1: accepting connection: <nil>\n" file="proxy_server.go:104"
+time="2024-10-19 10:42:33.084546" level=info msg="Node 3: accepting connection: <nil>\n" file="proxy_server.go:104"
+time="2024-10-19 10:42:33.084575" level=info msg="Connection accepted from 127.0.0.1:63151" file="proxy_server.go:119"
+time="2024-10-19 10:42:33.084583" level=info msg="Connection accepted from 127.0.0.1:63152" file="proxy_server.go:119"
+time="2024-10-19 10:42:33.084553" level=info msg="Node 4: Connected to Node 3 [LOCAL: 127.0.0.1:63150] [REMOTE: 127.0.0.1:1113]\n" file="proxy_server.go:49"
+time="2024-10-19 10:42:33.084587" level=info msg="Connection accepted from 127.0.0.1:63150" file="proxy_server.go:119"
+time="2024-10-19 10:42:33.084618" level=info msg="Waiting for connection on localhost:1111" file="proxy_server.go:96"
+time="2024-10-19 10:42:33.084644" level=info msg="Waiting for connection on localhost:1113" file="proxy_server.go:96"
+time="2024-10-19 10:42:33.084600" level=info msg="Waiting for connection on localhost:1112" file="proxy_server.go:96"
+time="2024-10-19 10:42:33.084667" level=info msg="Node 1: accepting connection: <nil>\n" file="proxy_server.go:104"
+time="2024-10-19 10:42:33.084684" level=info msg="Node 3: Accepted connection from 127.0.0.1:63150\n" file="proxy_server.go:127"
+time="2024-10-19 10:42:33.084130" level=info msg="Node 2: Connected to Node 1 [LOCAL: 127.0.0.1:63153] [REMOTE: 127.0.0.1:1111]\n" file="proxy_server.go:190"
+time="2024-10-19 10:42:33.084313" level=info msg="Node 3: Connected to Node 1 [LOCAL: 127.0.0.1:63152] [REMOTE: 127.0.0.1:1111]\n" file="proxy_server.go:190"
+time="2024-10-19 10:42:33.084313" level=info msg="Node 1: Connected to Node 2 [LOCAL: 127.0.0.1:63151] [REMOTE: 127.0.0.1:1112]\n" file="proxy_server.go:190"
+time="2024-10-19 10:42:33.084808" level=info msg="Node 2: Connected to Node 1 [LOCAL: 127.0.0.1:63153] [REMOTE: 127.0.0.1:1111]\n" file="proxy_server.go:49"
+time="2024-10-19 10:42:33.084818" level=info msg="Node 3: Connected to Node 1 [LOCAL: 127.0.0.1:63152] [REMOTE: 127.0.0.1:1111]\n" file="proxy_server.go:49"
+time="2024-10-19 10:42:33.084842" level=info msg="Node 1: Connected to Node 2 [LOCAL: 127.0.0.1:63151] [REMOTE: 127.0.0.1:1112]\n" file="proxy_server.go:49"
+time="2024-10-19 10:42:33.084663" level=info msg="Node 2: Accepted connection from 127.0.0.1:63151\n" file="proxy_server.go:127"
+time="2024-10-19 10:42:33.084675" level=info msg="Node 1: Accepted connection from 127.0.0.1:63152\n" file="proxy_server.go:127"
+time="2024-10-19 10:42:33.084747" level=info msg="Connection accepted from 127.0.0.1:63153" file="proxy_server.go:119"
+time="2024-10-19 10:42:33.085107" level=info msg="Waiting for connection on localhost:1111" file="proxy_server.go:96"
+time="2024-10-19 10:42:33.085138" level=info msg="Node 1: Accepted connection from 127.0.0.1:63153\n" file="proxy_server.go:127"
+time="2024-10-19 10:42:33.085301" level=info msg="Node 1: accepting connection: <nil>\n" file="proxy_server.go:104"
+time="2024-10-19 10:42:33.085325" level=info msg="Connection accepted from 127.0.0.1:63155" file="proxy_server.go:119"
+time="2024-10-19 10:42:33.085348" level=info msg="Waiting for connection on localhost:1111" file="proxy_server.go:96"
+time="2024-10-19 10:42:33.085379" level=info msg="Node 1: Accepted connection from 127.0.0.1:63155\n" file="proxy_server.go:127"
+time="2024-10-19 10:42:33.085390" level=info msg="Node 4: Connected to Node 1 [LOCAL: 127.0.0.1:63155] [REMOTE: 127.0.0.1:1111]\n" file="proxy_server.go:190"
+time="2024-10-19 10:42:33.085441" level=info msg="Node 4: Connected to Node 1 [LOCAL: 127.0.0.1:63155] [REMOTE: 127.0.0.1:1111]\n" file="proxy_server.go:49"
+time="2024-10-19 10:42:33.085536" level=info msg="Node 1: Connected to Node 3 [LOCAL: 127.0.0.1:63159] [REMOTE: 127.0.0.1:1113]\n" file="proxy_server.go:190"
+time="2024-10-19 10:42:33.085555" level=info msg="Node 3: Connected to Node 2 [LOCAL: 127.0.0.1:63160] [REMOTE: 127.0.0.1:1112]\n" file="proxy_server.go:190"
+time="2024-10-19 10:42:33.085567" level=info msg="Node 1: Connected to Node 3 [LOCAL: 127.0.0.1:63159] [REMOTE: 127.0.0.1:1113]\n" file="proxy_server.go:49"
+time="2024-10-19 10:42:33.085558" level=info msg="Node 2: Connected to Node 3 [LOCAL: 127.0.0.1:63161] [REMOTE: 127.0.0.1:1113]\n" file="proxy_server.go:190"
+time="2024-10-19 10:42:33.085584" level=info msg="Node 3: Connected to Node 2 [LOCAL: 127.0.0.1:63160] [REMOTE: 127.0.0.1:1112]\n" file="proxy_server.go:49"
+time="2024-10-19 10:42:33.085596" level=info msg="Node 2: Connected to Node 3 [LOCAL: 127.0.0.1:63161] [REMOTE: 127.0.0.1:1113]\n" file="proxy_server.go:49"
+time="2024-10-19 10:42:33.085587" level=info msg="Node 2: accepting connection: <nil>\n" file="proxy_server.go:104"
+time="2024-10-19 10:42:33.085574" level=info msg="Node 3: accepting connection: <nil>\n" file="proxy_server.go:104"
+time="2024-10-19 10:42:33.085648" level=info msg="Connection accepted from 127.0.0.1:63160" file="proxy_server.go:119"
+time="2024-10-19 10:42:33.085702" level=info msg="Connection accepted from 127.0.0.1:63159" file="proxy_server.go:119"
+time="2024-10-19 10:42:33.085710" level=info msg="Waiting for connection on localhost:1112" file="proxy_server.go:96"
+time="2024-10-19 10:42:33.085739" level=info msg="Waiting for connection on localhost:1113" file="proxy_server.go:96"
+time="2024-10-19 10:42:33.085782" level=info msg="Node 3: accepting connection: <nil>\n" file="proxy_server.go:104"
+time="2024-10-19 10:42:33.085800" level=info msg="Connection accepted from 127.0.0.1:63161" file="proxy_server.go:119"
+time="2024-10-19 10:42:33.085815" level=info msg="Waiting for connection on localhost:1113" file="proxy_server.go:96"
+time="2024-10-19 10:42:33.085813" level=info msg="Node 2: Accepted connection from 127.0.0.1:63160\n" file="proxy_server.go:127"
+time="2024-10-19 10:42:33.085814" level=info msg="Node 3: Accepted connection from 127.0.0.1:63159\n" file="proxy_server.go:127"
+time="2024-10-19 10:42:33.085892" level=info msg="Node 3: Accepted connection from 127.0.0.1:63161\n" file="proxy_server.go:127"
+time="2024-10-19 10:42:33.086247" level=info msg="Node 3: Connected to Node 4 [LOCAL: 127.0.0.1:63165] [REMOTE: 127.0.0.1:1114]\n" file="proxy_server.go:190"
+time="2024-10-19 10:42:33.086272" level=info msg="Node 3: Connected to Node 4 [LOCAL: 127.0.0.1:63165] [REMOTE: 127.0.0.1:1114]\n" file="proxy_server.go:49"
+time="2024-10-19 10:42:33.086286" level=info msg="Node 4: accepting connection: <nil>\n" file="proxy_server.go:104"
+time="2024-10-19 10:42:33.086311" level=info msg="Connection accepted from 127.0.0.1:63165" file="proxy_server.go:119"
+time="2024-10-19 10:42:33.086330" level=info msg="Waiting for connection on localhost:1114" file="proxy_server.go:96"
+time="2024-10-19 10:42:33.086346" level=info msg="starting server: %v&{3 0x1400011c0d8 <nil> [] 0x14000136080 0x140001000c0 0x14000100120 0x14000100180 [0x14000054018 0x14000114048 0x1400022a000]}" file="main.go:27"
+time="2024-10-19 10:42:33.086348" level=info msg="Node 2: Connected to Node 4 [LOCAL: 127.0.0.1:63168] [REMOTE: 127.0.0.1:1114]\n" file="proxy_server.go:190"
+time="2024-10-19 10:42:33.086365" level=info msg="Node 4: accepting connection: <nil>\n" file="proxy_server.go:104"
+time="2024-10-19 10:42:33.086425" level=info msg="Connection accepted from 127.0.0.1:63168" file="proxy_server.go:119"
+time="2024-10-19 10:42:33.086430" level=info msg="Node 2: Connected to Node 4 [LOCAL: 127.0.0.1:63168] [REMOTE: 127.0.0.1:1114]\n" file="proxy_server.go:49"
+time="2024-10-19 10:42:33.086461" level=info msg="Node 1: Connected to Node 4 [LOCAL: 127.0.0.1:63169] [REMOTE: 127.0.0.1:1114]\n" file="proxy_server.go:190"
+time="2024-10-19 10:42:33.086446" level=info msg="Waiting for connection on localhost:1114" file="proxy_server.go:96"
+time="2024-10-19 10:42:33.086493" level=info msg="Node 1: Connected to Node 4 [LOCAL: 127.0.0.1:63169] [REMOTE: 127.0.0.1:1114]\n" file="proxy_server.go:49"
+time="2024-10-19 10:42:33.086512" level=info msg="Node 4: accepting connection: <nil>\n" file="proxy_server.go:104"
+time="2024-10-19 10:42:33.086341" level=info msg="Node 2: accepting connection: <nil>\n" file="proxy_server.go:104"
+time="2024-10-19 10:42:33.086528" level=info msg="Connection accepted from 127.0.0.1:63169" file="proxy_server.go:119"
+time="2024-10-19 10:42:33.086531" level=info msg="starting server: %v&{1 0x1400011c0d8 <nil> [] 0x14000136080 0x140001000c0 0x14000100120 0x14000100180 [0x140000a4008 0x14000224008 0x14000224020]}" file="main.go:27"
+time="2024-10-19 10:42:33.086554" level=info msg="Waiting for connection on localhost:1114" file="proxy_server.go:96"
+time="2024-10-19 10:42:33.086546" level=info msg="Connection accepted from 127.0.0.1:63167" file="proxy_server.go:119"
+time="2024-10-19 10:42:33.086369" level=info msg="Node 4: Accepted connection from 127.0.0.1:63165\n" file="proxy_server.go:127"
+time="2024-10-19 10:42:33.086503" level=info msg="Node 4: Accepted connection from 127.0.0.1:63168\n" file="proxy_server.go:127"
+time="2024-10-19 10:42:33.086602" level=info msg="Waiting for connection on localhost:1112" file="proxy_server.go:96"
+time="2024-10-19 10:42:33.086303" level=info msg="Node 4: Connected to Node 2 [LOCAL: 127.0.0.1:63167] [REMOTE: 127.0.0.1:1112]\n" file="proxy_server.go:190"
+time="2024-10-19 10:42:33.086647" level=info msg="Node 2: Accepted connection from 127.0.0.1:63167\n" file="proxy_server.go:127"
+time="2024-10-19 10:42:33.086638" level=info msg="Node 4: Connected to Node 2 [LOCAL: 127.0.0.1:63167] [REMOTE: 127.0.0.1:1112]\n" file="proxy_server.go:49"
+time="2024-10-19 10:42:33.086549" level=info msg="starting server: %v&{2 0x1400011c0d8 <nil> [] 0x14000136080 0x140001000c0 0x14000100120 0x14000100180 [0x140000a4008 0x14000054018 0x14000054030]}" file="main.go:27"
+panic: runtime error: invalid memory address or nil pointer dereference
+[signal SIGSEGV: segmentation violation code=0x2 addr=0x10 pc=0x1024ce1a4]
 
-0x44
+goroutine 37 [running]:
+deukyunlee/hotstuff/core/consensus.(*State).StartConsensus(0x0, 0x1400007e0f0)
+	/Users/dukedev/hotstuff/core/consensus/hotstuff_impl.go:42 +0x44
+deukyunlee/hotstuff/core/network.(*Node).GetReq(0x14000134070, 0x0?)
+	/Users/dukedev/hotstuff/core/network/node.go:373 +0x28
+deukyunlee/hotstuff/core/network.(*Node).resolveRequestMsg(0x14000134070, {0x14000054020, 0x1, 0x0?})
+	/Users/dukedev/hotstuff/core/network/node.go:283 +0x84
+deukyunlee/hotstuff/core/network.(*Node).resolveMsg(0x14000134070)
+	/Users/dukedev/hotstuff/core/network/node.go:228 +0x7c
+created by deukyunlee/hotstuff/core/network.NewNode in goroutine 1
+	/Users/dukedev/hotstuff/core/network/node.go:67 +0x25c
+time="2024-10-19 10:42:33.090269" level=error msg="Node 3: Error unmarshalling message: unexpected end of JSON input" file="proxy_server.go:135"
+panic: runtime error: invalid memory address or nil pointer dereference
+[signal SIGSEGV: segmentation violation code=0x2 addr=0x10 pc=0x10041e1a4]
 
-goroutine goroutine 537 [/Users/dukedev/hotstuff/core/consensus/hotstuff_impl.gorunningdeukyunlee/hotstuff/core/network.(*Node).GetReq]:
-(:0x1400013c07042, deukyunlee/hotstuff/core/consensus.(*State).StartConsensus0x0( +?0x0)
-, 	0x140001801b00x44)
- [	running/Users/dukedev/hotstuff/core/consensus/hotstuff_impl.go
-]:
-/Users/dukedev/hotstuff/core/network/node.godeukyunlee/hotstuff/core/network.(*Node).GetReq::373( +0x1400013407042deukyunlee/hotstuff/core/consensus.(*State).StartConsensus +, (0x00x0?, 0x280x1400007e450)
-0x44
-	
-/Users/dukedev/hotstuff/core/consensus/hotstuff_impl.godeukyunlee/hotstuff/core/network.(*Node).resolveRequestMsg:)
-42	 +deukyunlee/hotstuff/core/network.(*Node).GetReq(0x44(0x1400013c070
-0x14000116070/Users/dukedev/hotstuff/core/network/node.godeukyunlee/hotstuff/core/network.(*Node).GetReq:, (3730x14000134070 +, 0x28{
-0x14000096060, 0x1, , deukyunlee/hotstuff/core/network.(*Node).resolveRequestMsg0x00x0??})
-0x0)
-?	(/Users/dukedev/hotstuff/core/network/node.go	0x14000134070)
-:	/Users/dukedev/hotstuff/core/network/node.go/Users/dukedev/hotstuff/core/network/node.go, :{2833730x14000210020 +, 0x280x1:, 
-0x0deukyunlee/hotstuff/core/network.(*Node).resolveRequestMsg +(373?0x14000134070 +, 0x28{}0x84)
+goroutine 21 [running]:
+deukyunlee/hotstuff/core/consensus.(*State).StartConsensus(0x0, 0x140000a6de0)
+	/Users/dukedev/hotstuff/core/consensus/hotstuff_impl.go:42 +0x44
+deukyunlee/hotstuff/core/network.(*Node).GetReq(0x140000c4070, 0x0?)
+	/Users/dukedev/hotstuff/core/network/node.go:373 +0x28panic: 
+runtime error: invalid memory address or nil pointer dereferencedeukyunlee/hotstuff/core/network.(*Node).resolveRequestMsg
+([signal 0x140000c4070SIGSEGV: segmentation violation,  code={0x20x140000a40b0 addr=, 0x100x1 pc=, 0x1049121a40x0]
+?
+}goroutine )
+37	 [/Users/dukedev/hotstuff/core/network/node.go:283 +running0x84]:
 
-	0x14000054068
-, deukyunlee/hotstuff/core/network.(*Node).resolveMsg0x1deukyunlee/hotstuff/core/network.(*Node).resolveRequestMsg(, 0x1400013c0700x0?(}0x14000116070)
-, /Users/dukedev/hotstuff/core/network/node.go{:283)
-	0x14000196048	, /Users/dukedev/hotstuff/core/network/node.go/Users/dukedev/hotstuff/core/network/node.go: +:2280x84 +
-283deukyunlee/hotstuff/core/network.(*Node).resolveMsg0x1( +0x140001340700x840x7c)
-
-	created by /Users/dukedev/hotstuff/core/network/node.godeukyunlee/hotstuff/core/network.NewNode:, 228
- +0x00x7cdeukyunlee/hotstuff/core/network.(*Node).resolveMsg
-(created by  in goroutine 0x14000134070deukyunlee/hotstuff/core/network.NewNode1 in goroutine ?1}
-)
-		/Users/dukedev/hotstuff/core/network/node.go)
-/Users/dukedev/hotstuff/core/network/node.go:	283/Users/dukedev/hotstuff/core/network/node.go +:0x84228
- +deukyunlee/hotstuff/core/network.(*Node).resolveMsg0x7c(
-0x14000116070created by )
-deukyunlee/hotstuff/core/network.NewNode in goroutine :167
-	/Users/dukedev/hotstuff/core/network/node.go +:0x25c
-67	 +
+deukyunlee/hotstuff/core/network.(*Node).resolveMsg(deukyunlee/hotstuff/core/consensus.(*State).StartConsensus0x140000c4070()
+0x0	, /Users/dukedev/hotstuff/core/network/node.go0x1400007c5a0:)
+228	 +/Users/dukedev/hotstuff/core/consensus/hotstuff_impl.go0x7c:
+42created by  +deukyunlee/hotstuff/core/network.NewNode0x44 in goroutine 
+1deukyunlee/hotstuff/core/network.(*Node).GetReq
+(	0x14000134070/Users/dukedev/hotstuff/core/network/node.go, :0x067? +)
 0x25c	
-/Users/dukedev/hotstuff/core/network/node.go:228 +0x7c
-created by deukyunlee/hotstuff/core/network.NewNode/Users/dukedev/hotstuff/core/network/node.go in goroutine :167
- +	0x25c/Users/dukedev/hotstuff/core/network/node.go
-:67 +0x25c
+/Users/dukedev/hotstuff/core/network/node.go:373 +0x28
+deukyunlee/hotstuff/core/network.(*Node).resolveRequestMsg(0x14000134070, {0x14000054078, 0x1, 0x0?})
+	/Users/dukedev/hotstuff/core/network/node.go:283 +0x84
+deukyunlee/hotstuff/core/network.(*Node).resolveMsg(0x14000134070)
+	/Users/dukedev/hotstuff/core/network/node.go:228 +0x7c
+created by deukyunlee/hotstuff/core/network.NewNode in goroutine 1
+	/Users/dukedev/hotstuff/core/network/node.go:67 +0x25c
+time="2024-10-19 10:42:33.091619" level=error msg="Node 3: Error unmarshalling message: unexpected end of JSON input" file="proxy_server.go:135"
+time="2024-10-19 10:42:33.092048" level=error msg="Node 3: Error unmarshalling message: unexpected end of JSON input" file="proxy_server.go:135"
