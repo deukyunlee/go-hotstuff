@@ -27,4 +27,4 @@ go.work.sum
 /.idea/
 
 # build file
-./hotstuff
+/hotstuff
