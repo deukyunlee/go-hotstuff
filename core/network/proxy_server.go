@@ -39,13 +39,16 @@ func setNode(nodeId int, address string) *Node {
 			var err error
 
 			for i := 0; i < RetryCount; i++ {
-				conn, err = startClient(nodeId, otherID, otherAddress)
+				conn, err = node.startClient(nodeId, otherID, otherAddress)
 
 				if err == nil {
 					logger.Infof("Node %d: Connected to Node %d [LOCAL: %s] [REMOTE: %s]\n", nodeId, otherID, conn.LocalAddr(), conn.RemoteAddr())
 					node.Connections = append(node.Connections, conn)
+
+					//go node.listenForMessages(conn)
 					break
 				}
+
 				logger.Infof("Failed to connect to node %d (attempt %d/%d): %v\n", otherID, i+1, RetryCount, err)
 
 				time.Sleep(ConnectionDelay)
@@ -61,6 +64,18 @@ func setNode(nodeId int, address string) *Node {
 	return node
 }
 
+//func (node *Node) listenForMessages(conn net.Conn) {
+//	scanner := bufio.NewScanner(conn)
+//	for scanner.Scan() {
+//		msg := strings.TrimSpace(scanner.Text())
+//		logger.Infof("Client received Message: %s", msg)
+//	}
+//	if err := scanner.Err(); err != nil {
+//		logger.Errorf("Client: Error reading message from server: %v", err)
+//	}
+//	logger.Info("here 2")
+//}
+
 // startServer starts the TCP server for the node
 func (node *Node) startServer(nodeId int, address string) {
 	ln, err := net.Listen(TcpNetworkType, address)
@@ -68,7 +83,7 @@ func (node *Node) startServer(nodeId int, address string) {
 		logger.Errorf("Node %d: Error starting server: %v\n", nodeId, err)
 	}
 
-	defer ln.Close()
+	//defer ln.Close()
 	if NodeTable[nodeId] == "" {
 		panic("Unable to get server info")
 	}
@@ -82,11 +97,12 @@ func (node *Node) startServer(nodeId int, address string) {
 		for i := 0; i < RetryCount; i++ {
 			conn, err = ln.Accept()
 			if err == nil {
-				logger.Errorf("Node %d: Error accepting connection: %v\n", nodeId, err)
+				logger.Infof("Node %d: accepting connection: %v\n", nodeId, err)
+
 				break
 			}
 
-			logger.Infof("Failed to connect to node %d (attempt %d/%d): %d\n", nodeId, i+1, RetryCount, err)
+			logger.Errorf("Failed to connect to node %d (attempt %d/%d): %d\n", nodeId, i+1, RetryCount, err)
 
 			time.Sleep(ConnectionDelay)
 		}
@@ -98,24 +114,25 @@ func (node *Node) startServer(nodeId int, address string) {
 
 		logger.Infof("Connection accepted from %s", conn.RemoteAddr().String())
 
-		node.setRoute(conn)
-		go handleConnection(nodeId, conn)
+		go node.handleConnection(nodeId, conn)
 	}
 }
 
 // handleConnection handles incoming connections to the server
-func handleConnection(id int, conn net.Conn) {
+func (node *Node) handleConnection(id int, conn net.Conn) {
 	logger.Infof("Node %d: Accepted connection from %s\n", id, conn.RemoteAddr().String())
 
 	buffer := make([]byte, 1024)
 	n, err := conn.Read(buffer)
 	if err == nil {
-		logger.Errorf("Node %d: Received message: %s\n", id, string(buffer[:n]))
+		logger.Infof("Node %d: Received message: %s\n", id, string(buffer[:n]))
+		node.MsgEntrance <- string(buffer[:n])
+
 	}
 }
 
 // startClient connects to another node
-func startClient(id, otherID int, address string) (net.Conn, error) {
+func (node *Node) startClient(id, otherID int, address string) (net.Conn, error) {
 	conn, err := net.Dial(TcpNetworkType, address)
 	if err != nil {
 		logger.Errorf("Node %d: Error connecting to Node %d at %s: %v\n", id, otherID, address, err)

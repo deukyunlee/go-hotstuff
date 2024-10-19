@@ -2,7 +2,7 @@ package consensus
 
 type RequestMsg struct {
 	Timestamp  int64  `json:"timestamp"`
-	ClientID   string `json:"clientID"`
+	ClientID   int64  `json:"clientID"`
 	Operation  string `json:"operation"`
 	SequenceID int64  `json:"sequenceID"`
 }

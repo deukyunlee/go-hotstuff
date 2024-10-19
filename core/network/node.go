@@ -1,14 +1,12 @@
 package network
 
 import (
-	"bufio"
 	"bytes"
 	"deukyunlee/hotstuff/core/consensus"
 	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -73,21 +71,25 @@ func NewNode(nodeID int) *Node {
 	return node
 }
 
-func (node *Node) Broadcast(msg interface{}, path string) map[int]error {
+func (node *Node) Broadcast(msg interface{}) map[int]error {
 	errorMap := make(map[int]error)
 
-	for nodeID, url := range NodeTable {
-		if nodeID == node.NodeID {
+	for id, conn := range node.Connections {
+		if id == node.NodeID {
 			continue
 		}
 
 		jsonMsg, err := json.Marshal(msg)
 		if err != nil {
-			errorMap[nodeID] = err
+			errorMap[id] = err
 			continue
 		}
 
-		send(url+path, jsonMsg)
+		_, err = conn.Write(jsonMsg)
+		if err != nil {
+			errorMap[id] = err
+			continue
+		}
 	}
 
 	if len(errorMap) == 0 {
@@ -117,6 +119,7 @@ func (node *Node) dispatchMsg() {
 func (node *Node) routeMsg(msg interface{}) []error {
 	switch m := msg.(type) {
 	case *consensus.RequestMsg:
+		fmt.Println("there")
 		node.processRequestMsg(m)
 
 	case *consensus.PrepareMsg:
@@ -383,7 +386,7 @@ func (node *Node) GetReq(reqMsg *consensus.RequestMsg) error {
 	}
 
 	if prePrepareMsg != nil {
-		node.Broadcast(prePrepareMsg, "/prepare")
+		node.Broadcast(prePrepareMsg)
 	}
 
 	return nil
@@ -400,7 +403,7 @@ func (node *Node) GetPrepare(prepareMsg *consensus.PrepareMsg) error {
 		commitMsg.NodeID = node.NodeID
 
 		if node.hasQuorumForPrepare() {
-			node.Broadcast(commitMsg, "/precommit")
+			node.Broadcast(commitMsg)
 		} else {
 
 		}
@@ -419,15 +422,4 @@ func (node *Node) GetCommit(commitMsg *consensus.ConsensusMsg) error {
 
 func (node *Node) GetDecide(commitMsg *consensus.ConsensusMsg) error {
 	return nil
-}
-
-func (node *Node) setRoute(conn net.Conn) {
-	scanner := bufio.NewScanner(conn)
-
-	for scanner.Scan() {
-		msg := strings.TrimSpace(scanner.Text())
-		logger.Info(msg)
-
-		node.MsgEntrance <- &msg
-	}
 }
