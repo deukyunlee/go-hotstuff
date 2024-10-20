@@ -1,0 +1,53 @@
+version: '3'
+services:
+  node1:
+    build: .
+    container_name: node1
+    networks:
+      - hotstuff-network
+    ports:
+      - "1111:1111"
+    environment:
+      - RUNNING_IN_DOCKER=true
+    command: ["-id=1"]
+    restart: always
+
+  node2:
+    build: .
+    container_name: node2
+    networks:
+      - hotstuff-network
+    ports:
+      - "1112:1112"
+    environment:
+      - RUNNING_IN_DOCKER=true
+    command: ["-id=2"]
+    restart: always
+
+  node3:
+    build: .
+    container_name: node3
+    networks:
+      - hotstuff-network
+    ports:
+      - "1113:1113"
+    environment:
+      - RUNNING_IN_DOCKER=true
+    command: ["-id=3"]
+    restart: always
+
+  node4:
+    build: .
+    container_name: node4
+    networks:
+      - hotstuff-network
+    ports:
+      - "1114:1114"
+    environment:
+      - RUNNING_IN_DOCKER=true
+    command: ["-id=4"]
+    restart: always
+
+networks:
+  hotstuff-network:
+    driver: bridge

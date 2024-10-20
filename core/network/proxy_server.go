@@ -16,15 +16,26 @@ const (
 
 var (
 	logger    = logging.GetLogger()
-	NodeTable = map[int]string{
-		1: "localhost:1111",
-		2: "localhost:1112",
-		3: "localhost:1113",
-		4: "localhost:1114",
-	}
+	NodeTable map[int]string
 )
 
-func StartNewNode(nodeId int) *Node {
+func StartNewNode(nodeId int, runningInDocker bool) *Node {
+	if runningInDocker {
+		NodeTable = map[int]string{
+			1: "node1:1111",
+			2: "node2:1112",
+			3: "node3:1113",
+			4: "node4:1114",
+		}
+	} else {
+		NodeTable = map[int]string{
+			1: "localhost:1111",
+			2: "localhost:1112",
+			3: "localhost:1113",
+			4: "localhost:1114",
+		}
+	}
+
 	return setNode(nodeId, NodeTable[nodeId])
 }
 

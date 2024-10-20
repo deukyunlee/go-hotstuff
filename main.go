@@ -4,6 +4,7 @@ import (
 	"deukyunlee/hotstuff/core/network"
 	"deukyunlee/hotstuff/logging"
 	"flag"
+	"os"
 )
 
 var (
@@ -11,6 +12,7 @@ var (
 )
 
 var Id int
+var runningInDocker bool
 
 func init() {
 	idPtr := flag.Int("id", 1, "hotstuff Node ID")
@@ -18,10 +20,11 @@ func init() {
 	flag.Parse()
 
 	Id = *idPtr
+	runningInDocker = os.Getenv("RUNNING_IN_DOCKER") == "true"
 }
 
 func main() {
-	node := network.StartNewNode(Id)
+	node := network.StartNewNode(Id, runningInDocker)
 	logger.Info("starting server: %v", node)
 	select {}
 }
