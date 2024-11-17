@@ -16,26 +16,27 @@ type MsgBuffer struct {
 }
 
 type Node struct {
-	NodeID        int
-	View          *View
-	CurrentState  *consensus.State
-	CommittedMsgs []*consensus.RequestMsg
-	MsgBuffer     *MsgBuffer
-	MsgEntrance   chan interface{}
-	MsgDelivery   chan interface{}
-	Alarm         chan bool
-	Connections   []net.Conn
+	NodeID          uint64
+	View            *View
+	CurrentState    *consensus.State
+	CommittedMsgs   []*consensus.RequestMsg
+	MsgBuffer       *MsgBuffer
+	MsgEntrance     chan interface{}
+	MsgDelivery     chan interface{}
+	Alarm           chan bool
+	Connections     []net.Conn
+	LocalConnection net.Conn
 }
 
 type View struct {
-	ID      int64
+	ID      uint64
 	Primary string
 }
 
 const ResolvingTimeDuration = time.Second
 
-func NewNode(nodeID int) *Node {
-	const startViewId = 10000000000
+func NewNode(nodeID uint64) *Node {
+	const startViewId = 1
 
 	node := &Node{
 		NodeID: nodeID,
@@ -44,7 +45,12 @@ func NewNode(nodeID int) *Node {
 			Primary: "1",
 		},
 
-		CurrentState:  nil,
+		CurrentState: &consensus.State{
+			ViewID:         startViewId,
+			MsgLogs:        &consensus.MsgLogs{},
+			LastSequenceID: 1,
+			CurrentStage:   consensus.Idle,
+		},
 		CommittedMsgs: make([]*consensus.RequestMsg, 0),
 		MsgBuffer: &MsgBuffer{
 			ReqMsgs:       make([]*consensus.RequestMsg, 0),
@@ -72,7 +78,7 @@ func (node *Node) Broadcast(msg interface{}) map[int]error {
 	errorMap := make(map[int]error)
 
 	for id, conn := range node.Connections {
-		if id == node.NodeID {
+		if uint64(id) == node.NodeID {
 			continue
 		}
 
@@ -82,11 +88,12 @@ func (node *Node) Broadcast(msg interface{}) map[int]error {
 			continue
 		}
 
-		_, err = conn.Write(jsonMsg)
-		if err != nil {
-			errorMap[id] = err
-			continue
-		}
+		go func(conn net.Conn, msg []byte) {
+			_, err = conn.Write(msg)
+			if err != nil {
+				logger.Errorf("Failed to send message to %s: %v", conn.RemoteAddr(), err)
+			}
+		}(conn, jsonMsg)
 	}
 
 	if len(errorMap) == 0 {
@@ -100,6 +107,7 @@ func (node *Node) dispatchMsg() {
 	for {
 		select {
 		case msg := <-node.MsgEntrance:
+			logger.Infof("[node %d] msEntrance", node.NodeID)
 			err := node.routeMsg(msg)
 			if err != nil {
 				logger.Errorf("Error happend when routing: %v", err)
@@ -168,7 +176,7 @@ func (node *Node) processConsensusMsg(msg *consensus.ConsensusMsg, buffer []*con
 }
 
 func (node *Node) routeMsgWhenAlarmed() []error {
-	if node.CurrentState == nil {
+	if node.CurrentState == nil || node.CurrentState.CurrentStage == consensus.Idle {
 		node.sendReqMsgs()
 		node.sendPrepareMsgs()
 	} else {
@@ -180,6 +188,7 @@ func (node *Node) routeMsgWhenAlarmed() []error {
 		case consensus.Decided:
 			node.sendConsensusMsgs(node.MsgBuffer.DecideMsgs)
 		default:
+			logger.Errorf("[Node: %d]unhandled default case: %v", node.NodeID, node.CurrentState.CurrentStage)
 			panic("unhandled default case")
 		}
 	}
@@ -189,9 +198,11 @@ func (node *Node) routeMsgWhenAlarmed() []error {
 
 func (node *Node) sendReqMsgs() {
 	if len(node.MsgBuffer.ReqMsgs) > 0 {
+		logger.Infof("message: %v", node.MsgBuffer.ReqMsgs)
 		msgs := make([]*consensus.RequestMsg, len(node.MsgBuffer.ReqMsgs))
 		copy(msgs, node.MsgBuffer.ReqMsgs)
 		node.MsgDelivery <- msgs
+		node.MsgBuffer.ReqMsgs = nil
 	}
 }
 
@@ -224,10 +235,10 @@ func (node *Node) resolveMsg() {
 
 		switch m := msgs.(type) {
 		case []*consensus.RequestMsg:
-			node.handleErrors(node.resolveRequestMsg(m))
+			go node.handleErrors(node.resolveRequestMsg(m))
 
 		case []*consensus.PrepareMsg:
-			node.handleErrors(node.resolvePrepareMsg(m))
+			go node.handleErrors(node.resolvePrepareMsg(m))
 
 		case []*consensus.ConsensusMsg:
 			if len(m) == 0 {
@@ -257,6 +268,8 @@ func (node *Node) handleErrors(errs []error) {
 }
 
 func (node *Node) resolvePrepareMsg(msgs []*consensus.PrepareMsg) []error {
+	logger.Info("resolvePrepareMsgs")
+
 	errs := make([]error, 0)
 
 	// Resolve messages
@@ -275,11 +288,23 @@ func (node *Node) resolvePrepareMsg(msgs []*consensus.PrepareMsg) []error {
 }
 
 func (node *Node) resolveRequestMsg(msgs []*consensus.RequestMsg) []error {
+	logger.Info("resolveRequestMsg")
+
 	errs := make([]error, 0)
 
 	// Resolve messages
 	for _, reqMsg := range msgs {
-		err := node.GetReq(reqMsg)
+		logger.Infof("Request Message: %v", reqMsg)
+		node.createStateForNewConsensus(reqMsg)
+
+		// 메시지를 들어올 때마다 처리하도록
+		// 버퍼에 쌓을 필요 X
+		// 버퍼에 쌓고 1초 주기로 비우는 것보다 그냥 메세지 들어올 때마다 처리하는 것으로 수정
+		prePrepareMsg, err := node.CurrentState.StartConsensus(reqMsg)
+
+		logger.Infof("prePrepareMsg: %s", prePrepareMsg)
+		// HasQuorum
+		err = node.GetReq(reqMsg)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -346,35 +371,35 @@ func (node *Node) resolveDecideMsg(msgs []*consensus.ConsensusMsg) []error {
 	return nil
 }
 
-func (node *Node) hasQuorumForPrepare() bool {
-	totalNodes := len(NodeTable)
-
-	//The quorum size is usually calculated as (2/3) * N + 1, where N is the total number of nodes.
-	quorumSize := (2 * totalNodes / 3) + 1
-
-	prepareMsgCount := 0
-	for _, msg := range node.MsgBuffer.PrepareMsgs {
-		if msg.ViewID == node.CurrentState.ViewID && msg.SequenceID == node.CurrentState.LastSequenceID {
-			prepareMsgCount++
-		}
-	}
-
-	return prepareMsgCount >= quorumSize
-}
-
 func (node *Node) GetReq(reqMsg *consensus.RequestMsg) error {
 
-	node.createStateForNewConsensus(reqMsg)
+	if reqMsg != nil {
+		// Channel to signal when quorum is reached
+		quorumChan := make(chan struct{})
 
-	prePrepareMsg, err := node.CurrentState.StartConsensus(reqMsg)
-	if err != nil {
-		return err
+		// Goroutine to wait for quorum
+		go func() {
+			for {
+				if node.CurrentState.HasQuorum() {
+					close(quorumChan)
+					break
+				}
+				logger.Infof("[Msg: %d]Sleeping for %s", len(node.CurrentState.MsgLogs.PrepareMsgs), "10 * time.Millisecond")
+				time.Sleep(10 * time.Millisecond) // Polling interval (adjust as needed)
+			}
+		}()
+
+		// Wait for quorum
+		<-quorumChan
+
+		// Broadcast after quorum is reached
+		logger.Info("here")
+		node.Broadcast(reqMsg)
 	}
 
-	if prePrepareMsg != nil {
-		node.Broadcast(prePrepareMsg)
-	}
-
+	//if prePrepareMsg != nil {
+	//	node.Broadcast(prePrepareMsg)
+	//}
 	return nil
 }
 
@@ -386,9 +411,7 @@ func (node *Node) GetPrepare(prepareMsg *consensus.PrepareMsg) error {
 	}
 
 	if commitMsg != nil {
-		commitMsg.NodeID = node.NodeID
-
-		if node.hasQuorumForPrepare() {
+		if node.CurrentState.HasQuorum() {
 			node.Broadcast(commitMsg)
 		} else {
 
@@ -411,8 +434,12 @@ func (node *Node) GetDecide(commitMsg *consensus.ConsensusMsg) error {
 }
 
 func (node *Node) createStateForNewConsensus(reqMsg *consensus.RequestMsg) {
+	if node.CurrentState == nil {
+		node.CurrentState = &consensus.State{}
+		node.CurrentState.MsgLogs = &consensus.MsgLogs{}
+	}
+
 	node.CurrentState.ViewID = node.View.ID
-	node.CurrentState.MsgLogs = nil
 	node.CurrentState.LastSequenceID = reqMsg.SequenceID
 	node.CurrentState.CurrentStage = consensus.Idle
 }

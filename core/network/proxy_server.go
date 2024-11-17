@@ -16,19 +16,19 @@ const (
 
 var (
 	logger    = logging.GetLogger()
-	NodeTable map[int]string
+	NodeTable map[uint64]string
 )
 
-func StartNewNode(nodeId int, runningInDocker bool) *Node {
+func StartNewNode(nodeId uint64, runningInDocker bool) *Node {
 	if runningInDocker {
-		NodeTable = map[int]string{
+		NodeTable = map[uint64]string{
 			1: "node1:1111",
 			2: "node2:1112",
 			3: "node3:1113",
 			4: "node4:1114",
 		}
 	} else {
-		NodeTable = map[int]string{
+		NodeTable = map[uint64]string{
 			1: "localhost:1111",
 			2: "localhost:1112",
 			3: "localhost:1113",
@@ -40,7 +40,7 @@ func StartNewNode(nodeId int, runningInDocker bool) *Node {
 }
 
 // setNode starts both server and client and set data for a given node
-func setNode(nodeId int, address string) *Node {
+func setNode(nodeId uint64, address string) *Node {
 
 	node := NewNode(nodeId)
 
@@ -59,7 +59,7 @@ func setNode(nodeId int, address string) *Node {
 	return node
 }
 
-func (node *Node) startClientWithRetry(nodeId int, otherId int, otherAddress string) error {
+func (node *Node) startClientWithRetry(nodeId uint64, otherId uint64, otherAddress string) error {
 	var err error
 	var conn net.Conn
 	for i := 0; i < RetryCount; i++ {
@@ -79,7 +79,7 @@ func (node *Node) startClientWithRetry(nodeId int, otherId int, otherAddress str
 }
 
 // startServer starts the TCP server for the node
-func (node *Node) startServer(nodeId int, address string) {
+func (node *Node) startServer(nodeId uint64, address string) {
 	ln, err := net.Listen(TcpNetworkType, address)
 	if err != nil {
 		logger.Errorf("Node %d: Error starting server: %v\n", nodeId, err)
@@ -102,11 +102,13 @@ func (node *Node) startServer(nodeId int, address string) {
 
 		logger.Infof("Connection accepted from %s", conn.RemoteAddr().String())
 
+		node.LocalConnection = conn
+
 		go node.handleConnection(nodeId, conn)
 	}
 }
 
-func (node *Node) startServerWithRetry(nodeId int, ln net.Listener) (conn net.Conn, err error) {
+func (node *Node) startServerWithRetry(nodeId uint64, ln net.Listener) (conn net.Conn, err error) {
 	for i := 0; i < RetryCount; i++ {
 		conn, err = ln.Accept()
 		if err == nil {
@@ -123,11 +125,13 @@ func (node *Node) startServerWithRetry(nodeId int, ln net.Listener) (conn net.Co
 }
 
 // handleConnection handles incoming connections to the server
-func (node *Node) handleConnection(id int, conn net.Conn) {
+func (node *Node) handleConnection(id uint64, conn net.Conn) {
 	logger.Infof("Node %d: Accepted connection from %s\n", id, conn.RemoteAddr().String())
 
 	buffer := make([]byte, 1024)
+
 	n, err := conn.Read(buffer)
+	logger.Infof("Node %d: Received raw buffer: %s", id, string(buffer[:n]))
 
 	var rawMsg map[string]interface{}
 	err = json.Unmarshal(buffer[:n], &rawMsg)
@@ -136,6 +140,8 @@ func (node *Node) handleConnection(id int, conn net.Conn) {
 		return
 	}
 
+	logger.Infof("[NodeId: %d] rawMsg: %v", node.NodeID, rawMsg)
+	//logger.Infof("rawMsg msgType: %v", rawMsg["msgType"].(int))
 	if rawMsgType, ok := rawMsg["msgType"].(float64); ok {
 
 		consensusMsgType := consensus.MsgType(int(rawMsgType))
@@ -165,12 +171,13 @@ func (node *Node) handleConnection(id int, conn net.Conn) {
 			logger.Errorf("Node %d: Unrecognized message type: %v", id, rawMsgType)
 		}
 	} else {
-		logger.Errorf("Node %d: MsgType field not found", id)
+		logger.Errorf("Node %d: MsgType field not found with %s", id, rawMsg)
 	}
+
 }
 
 // startClient connects to another node
-func (node *Node) startClient(id, otherID int, address string) (net.Conn, error) {
+func (node *Node) startClient(id, otherID uint64, address string) (net.Conn, error) {
 	conn, err := net.Dial(TcpNetworkType, address)
 	if err != nil {
 		logger.Errorf("Node %d: Error connecting to Node %d at %s: %v\n", id, otherID, address, err)
@@ -179,4 +186,31 @@ func (node *Node) startClient(id, otherID int, address string) (net.Conn, error)
 
 	logger.Infof("Node %d: Connected to Node %d [LOCAL: %s] [REMOTE: %s]\n", id, otherID, conn.LocalAddr(), conn.RemoteAddr())
 	return conn, nil
+}
+
+func (node *Node) SendInitialRequestMsg() {
+	leader := node.CurrentState.GetLeader()
+
+	if node.NodeID != leader {
+		reqMsg := consensus.RequestMsg{
+			MsgType:    consensus.Request,
+			Timestamp:  time.Now().Unix(),
+			ClientID:   node.NodeID,
+			Operation:  "INITIAL",
+			SequenceID: 1,
+		}
+
+		conn, err := net.Dial("tcp", NodeTable[leader])
+		if err != nil {
+			logger.Errorf("Failed to connect to leader: %v", err)
+			return
+		}
+		defer conn.Close()
+
+		jsonReqMsg, _ := json.Marshal(reqMsg)
+		_, err = conn.Write(jsonReqMsg)
+		if err != nil {
+			logger.Errorf("Failed to send request: %v", err)
+		}
+	}
 }

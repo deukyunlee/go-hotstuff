@@ -11,11 +11,11 @@ var (
 	logger = logging.GetLogger()
 )
 
-var Id int
+var Id uint64
 var runningInDocker bool
 
 func init() {
-	idPtr := flag.Int("id", 1, "hotstuff Node ID")
+	idPtr := flag.Uint64("id", 1, "hotstuff Node ID")
 
 	flag.Parse()
 
@@ -26,5 +26,10 @@ func init() {
 func main() {
 	node := network.StartNewNode(Id, runningInDocker)
 	logger.Info("starting server: %v", node)
+
+	// INITIAL LEADER is node 1
+	logger.Infof("current state: %v, Leader: %v", node.CurrentState, node.CurrentState.GetLeader())
+
+	node.SendInitialRequestMsg()
 	select {}
 }

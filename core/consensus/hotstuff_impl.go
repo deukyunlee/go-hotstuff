@@ -1,16 +1,22 @@
 package consensus
 
 import (
+	"deukyunlee/hotstuff/logging"
 	"deukyunlee/hotstuff/util"
-	"fmt"
+	"sync"
 	"time"
 )
 
+var (
+	logger = logging.GetLogger()
+)
+
 type State struct {
-	ViewID         int64
+	ViewID         uint64
 	MsgLogs        *MsgLogs
-	LastSequenceID int64
+	LastSequenceID uint64
 	CurrentStage   Stage
+	mu             sync.Mutex
 }
 
 type MsgLogs struct {
@@ -35,9 +41,21 @@ In DiemBFT, which is based on HotStuff, the leader election process is designed 
 HotStuff requires synchronous communication between nodes during the lock-precursor process, which can introduce latency.
 */
 
+func (state *State) GetLeader() uint64 {
+	var id uint64
+
+	logger.Infof("leader: %d", state.ViewID)
+	id = state.ViewID % 4
+	if id == 0 {
+		id = 4
+	}
+
+	return id
+}
+
 func (state *State) StartConsensus(request *RequestMsg) (*PrepareMsg, error) {
 
-	sequenceId := time.Now().UnixNano()
+	sequenceId := uint64(time.Now().UnixNano())
 
 	if sequenceId <= state.LastSequenceID {
 		sequenceId = state.LastSequenceID + 1
@@ -49,7 +67,7 @@ func (state *State) StartConsensus(request *RequestMsg) (*PrepareMsg, error) {
 
 	digest, err := util.Digest(request)
 	if err != nil {
-		fmt.Println(err)
+		logger.Errorf("digest error: %s", err)
 		return nil, err
 	}
 
@@ -63,8 +81,8 @@ func (state *State) StartConsensus(request *RequestMsg) (*PrepareMsg, error) {
 	if state.MsgLogs.PrepareMsgs == nil {
 		state.MsgLogs.PrepareMsgs = make(map[string]*PrepareMsg)
 	}
+	state.MsgLogs.ReqMsg = request
 	state.MsgLogs.PrepareMsgs[digest] = prepareMsg
-
 	state.CurrentStage = Prepared
 
 	return prepareMsg, nil
@@ -144,3 +162,14 @@ func (state *State) Decide(decideMsg *ConsensusMsg) (*ConsensusMsg, error) {
 // Finally
 // NEXTVIEW interrupt: goto this line if NEXTVIEW(curView) is called during "wait for" in any phase
 // send MSG(NEW-VIEW, ㅗ, prepareQC) to LEADER(curView + 1)
+
+func (state *State) HasQuorum() bool {
+	totalReplicas := 4
+	quorumSize := (2 * totalReplicas) / 3
+
+	state.mu.Lock()
+	defer state.mu.Unlock()
+
+	responseCount := len(state.MsgLogs.PrepareMsgs)
+	return responseCount >= quorumSize
+}

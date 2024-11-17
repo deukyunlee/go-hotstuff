@@ -12,7 +12,7 @@ func TestStartNewNode(t *testing.T) {
 	for i := 1; i <= 4; i++ {
 		wg.Add(1)
 
-		go func(i int) {
+		go func(i uint64) {
 			defer wg.Done()
 			nodeId := i
 			node := StartNewNode(nodeId, false)
@@ -20,7 +20,7 @@ func TestStartNewNode(t *testing.T) {
 			if node.NodeID != nodeId {
 				t.Errorf("expected NodeID to be %d, got %d", nodeId, node.NodeID)
 			}
-		}(i)
+		}(uint64(i))
 	}
 	wg.Wait()
 }
