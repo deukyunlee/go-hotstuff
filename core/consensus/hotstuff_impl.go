@@ -2,9 +2,7 @@ package consensus
 
 import (
 	"deukyunlee/hotstuff/logging"
-	"deukyunlee/hotstuff/util"
 	"sync"
-	"time"
 )
 
 var (
@@ -16,11 +14,11 @@ type State struct {
 	MsgLogs        *MsgLogs
 	LastSequenceID uint64
 	CurrentStage   Stage
-	mu             sync.Mutex
+	mu             *sync.Mutex
 }
 
 type MsgLogs struct {
-	ReqMsg        *RequestMsg
+	ReqMsg        []*RequestMsg
 	PrepareMsgs   map[string]*PrepareMsg
 	ConsensusMsgs map[string]*ConsensusMsg
 }
@@ -53,9 +51,9 @@ func (state *State) GetLeader() uint64 {
 	return id
 }
 
-func (state *State) StartConsensus(request *RequestMsg) (*PrepareMsg, error) {
+func (state *State) StartConsensus(request *RequestMsg) error {
 
-	sequenceId := uint64(time.Now().UnixNano())
+	sequenceId := uint64(0)
 
 	if sequenceId <= state.LastSequenceID {
 		sequenceId = state.LastSequenceID + 1
@@ -63,29 +61,9 @@ func (state *State) StartConsensus(request *RequestMsg) (*PrepareMsg, error) {
 
 	request.SequenceID = sequenceId
 
-	state.MsgLogs.ReqMsg = request
+	state.MsgLogs.ReqMsg = append(state.MsgLogs.ReqMsg, request)
 
-	digest, err := util.Digest(request)
-	if err != nil {
-		logger.Errorf("digest error: %s", err)
-		return nil, err
-	}
-
-	prepareMsg := &PrepareMsg{
-		ViewID:     state.ViewID,
-		SequenceID: sequenceId,
-		Digest:     digest,
-		RequestMsg: request,
-	}
-
-	if state.MsgLogs.PrepareMsgs == nil {
-		state.MsgLogs.PrepareMsgs = make(map[string]*PrepareMsg)
-	}
-	state.MsgLogs.ReqMsg = request
-	state.MsgLogs.PrepareMsgs[digest] = prepareMsg
-	state.CurrentStage = Prepared
-
-	return prepareMsg, nil
+	return nil
 }
 
 func (state *State) Prepare(prepareMsg *PrepareMsg) (*ConsensusMsg, error) {
@@ -167,9 +145,10 @@ func (state *State) HasQuorum() bool {
 	totalReplicas := 4
 	quorumSize := (2 * totalReplicas) / 3
 
-	state.mu.Lock()
-	defer state.mu.Unlock()
+	//state.mu.Lock()
+	//defer state.mu.Unlock()
 
-	responseCount := len(state.MsgLogs.PrepareMsgs)
+	responseCount := len(state.MsgLogs.ReqMsg)
+	logger.Infof("[Required: %d], [Got: %d]", quorumSize, responseCount)
 	return responseCount >= quorumSize
 }

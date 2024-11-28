@@ -152,21 +152,21 @@ func (node *Node) handleConnection(id uint64, conn net.Conn) {
 			if err != nil {
 				logger.Errorf("Node %d: Error unmarshalling message: %v", id, err)
 			}
-			node.MsgEntrance <- &reqMsg
+			node.MsgDelivery <- &reqMsg
 		case consensus.Prepare:
 			var prepareMsg consensus.PrepareMsg
 			err := json.Unmarshal(buffer[:n], &prepareMsg)
 			if err != nil {
 				logger.Errorf("Node %d: Error unmarshalling message: %v", id, err)
 			}
-			node.MsgEntrance <- &prepareMsg
+			node.MsgDelivery <- &prepareMsg
 		case consensus.PreCommit, consensus.Commit, consensus.Decide:
 			var consensusMsg consensus.ConsensusMsg
 			err := json.Unmarshal(buffer[:n], &consensusMsg)
 			if err != nil {
 				logger.Errorf("Node %d: Error unmarshalling message: %v", id, err)
 			}
-			node.MsgEntrance <- &consensusMsg
+			node.MsgDelivery <- &consensusMsg
 		default:
 			logger.Errorf("Node %d: Unrecognized message type: %v", id, rawMsgType)
 		}

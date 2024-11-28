@@ -2,30 +2,24 @@ package network
 
 import (
 	"deukyunlee/hotstuff/core/consensus"
+	"deukyunlee/hotstuff/util"
 	"encoding/json"
 	"net"
+	"strconv"
+	"sync"
 	"time"
 )
-
-type MsgBuffer struct {
-	ReqMsgs       []*consensus.RequestMsg
-	PrepareMsgs   []*consensus.PrepareMsg
-	PreCommitMsgs []*consensus.ConsensusMsg
-	CommitMsgs    []*consensus.ConsensusMsg
-	DecideMsgs    []*consensus.ConsensusMsg
-}
 
 type Node struct {
 	NodeID          uint64
 	View            *View
 	CurrentState    *consensus.State
 	CommittedMsgs   []*consensus.RequestMsg
-	MsgBuffer       *MsgBuffer
-	MsgEntrance     chan interface{}
 	MsgDelivery     chan interface{}
 	Alarm           chan bool
 	Connections     []net.Conn
 	LocalConnection net.Conn
+	processingView  sync.Map
 }
 
 type View struct {
@@ -52,20 +46,11 @@ func NewNode(nodeID uint64) *Node {
 			CurrentStage:   consensus.Idle,
 		},
 		CommittedMsgs: make([]*consensus.RequestMsg, 0),
-		MsgBuffer: &MsgBuffer{
-			ReqMsgs:       make([]*consensus.RequestMsg, 0),
-			PrepareMsgs:   make([]*consensus.PrepareMsg, 0),
-			PreCommitMsgs: make([]*consensus.ConsensusMsg, 0),
-			CommitMsgs:    make([]*consensus.ConsensusMsg, 0),
-			DecideMsgs:    make([]*consensus.ConsensusMsg, 0),
-		},
-
-		MsgEntrance: make(chan interface{}),
-		MsgDelivery: make(chan interface{}),
-		Alarm:       make(chan bool),
+		MsgDelivery:   make(chan interface{}),
+		Alarm:         make(chan bool),
 	}
 
-	go node.dispatchMsg()
+	//go node.dispatchMsg()
 
 	go node.alarmToDispatcher()
 
@@ -106,22 +91,22 @@ func (node *Node) Broadcast(msg interface{}) map[int]error {
 func (node *Node) dispatchMsg() {
 	for {
 		select {
-		case msg := <-node.MsgEntrance:
-			logger.Infof("[node %d] msEntrance", node.NodeID)
-			err := node.routeMsg(msg)
-			if err != nil {
-				logger.Errorf("Error happend when routing: %v", err)
-			}
-		case <-node.Alarm:
-			err := node.routeMsgWhenAlarmed()
-			if err != nil {
-				logger.Errorf("Error happend when routing with alarm: %v", err)
-			}
+		//case msg := <-node.MsgEntrance:
+		//	logger.Infof("[node %d] msEntrance", node.NodeID)
+		//	err := node.routeMsg(msg)
+		//	if err != nil {
+		//		logger.Errorf("Error happend when routing: %v", err)
+		//	}
+		//case <-node.Alarm:
+		//	err := node.routeMsgWhenAlarmed()
+		//	if err != nil {
+		//		logger.Errorf("Error happend when routing with alarm: %v", err)
+		//	}
 		}
 	}
 }
 
-func (node *Node) routeMsg(msg interface{}) []error {
+func (node *Node) routeMsg(msg interface{}) error {
 	switch m := msg.(type) {
 	case *consensus.RequestMsg:
 		node.processRequestMsg(m)
@@ -132,11 +117,11 @@ func (node *Node) routeMsg(msg interface{}) []error {
 	case *consensus.ConsensusMsg:
 		switch m.MsgType {
 		case consensus.PreCommit:
-			node.processConsensusMsg(m, node.MsgBuffer.PreCommitMsgs, consensus.PreCommitted)
+			node.processConsensusMsg(m, consensus.PreCommitted)
 		case consensus.Commit:
-			node.processConsensusMsg(m, node.MsgBuffer.CommitMsgs, consensus.Committed)
+			node.processConsensusMsg(m, consensus.Committed)
 		case consensus.Decide:
-			node.processConsensusMsg(m, node.MsgBuffer.DecideMsgs, consensus.Decided)
+			node.processConsensusMsg(m, consensus.Decided)
 		default:
 			panic("unhandled default case")
 		}
@@ -146,81 +131,65 @@ func (node *Node) routeMsg(msg interface{}) []error {
 }
 
 func (node *Node) processRequestMsg(msg *consensus.RequestMsg) {
-	if node.CurrentState == nil {
-		msgs := append(node.MsgBuffer.ReqMsgs, msg)
-		node.MsgBuffer.ReqMsgs = nil
-		node.MsgDelivery <- msgs
-	} else {
-		node.MsgBuffer.ReqMsgs = append(node.MsgBuffer.ReqMsgs, msg)
-	}
+	node.MsgDelivery <- msg
 }
 
 func (node *Node) processPrepareMsg(msg *consensus.PrepareMsg) {
-	if node.CurrentState == nil {
-		msgs := append(node.MsgBuffer.PrepareMsgs, msg)
-		node.MsgBuffer.PrepareMsgs = nil
-		node.MsgDelivery <- msgs
-	} else {
-		node.MsgBuffer.PrepareMsgs = append(node.MsgBuffer.PrepareMsgs, msg)
-	}
+	node.MsgDelivery <- msg
 }
 
-func (node *Node) processConsensusMsg(msg *consensus.ConsensusMsg, buffer []*consensus.ConsensusMsg, expectedStage consensus.Stage) {
-	if node.CurrentState == nil || node.CurrentState.CurrentStage != expectedStage {
-		node.MsgBuffer.PreCommitMsgs = append(buffer, msg)
-	} else {
-		msgs := append(buffer, msg)
-		node.MsgBuffer.PreCommitMsgs = nil
-		node.MsgDelivery <- msgs
+func (node *Node) processConsensusMsg(msg *consensus.ConsensusMsg, expectedStage consensus.Stage) {
+	if node.CurrentState != nil && node.CurrentState.CurrentStage == expectedStage {
+		node.MsgDelivery <- msg
 	}
 }
 
 func (node *Node) routeMsgWhenAlarmed() []error {
-	if node.CurrentState == nil || node.CurrentState.CurrentStage == consensus.Idle {
-		node.sendReqMsgs()
-		node.sendPrepareMsgs()
-	} else {
-		switch node.CurrentState.CurrentStage {
-		case consensus.PreCommitted:
-			node.sendConsensusMsgs(node.MsgBuffer.PreCommitMsgs)
-		case consensus.Committed:
-			node.sendConsensusMsgs(node.MsgBuffer.CommitMsgs)
-		case consensus.Decided:
-			node.sendConsensusMsgs(node.MsgBuffer.DecideMsgs)
-		default:
-			logger.Errorf("[Node: %d]unhandled default case: %v", node.NodeID, node.CurrentState.CurrentStage)
-			panic("unhandled default case")
-		}
-	}
+	//if node.CurrentState == nil || node.CurrentState.CurrentStage == consensus.Idle {
+	//	node.sendReqMsgs()
+	//	node.sendPrepareMsgs()
+	//} else {
+	//	switch node.CurrentState.CurrentStage {
+	//	case consensus.PreCommitted:
+	//		node.sendConsensusMsgs(node.MsgBuffer.PreCommitMsgs)
+	//	case consensus.Committed:
+	//		node.sendConsensusMsgs(node.MsgBuffer.CommitMsgs)
+	//	case consensus.Decided:
+	//		node.sendConsensusMsgs(node.MsgBuffer.DecideMsgs)
+	//	default:
+	//		logger.Errorf("[Node: %d]unhandled default case: %v", node.NodeID, node.CurrentState.CurrentStage)
+	//		panic("unhandled default case")
+	//	}
+	//}
 
 	return nil
 }
 
-func (node *Node) sendReqMsgs() {
-	if len(node.MsgBuffer.ReqMsgs) > 0 {
-		logger.Infof("message: %v", node.MsgBuffer.ReqMsgs)
-		msgs := make([]*consensus.RequestMsg, len(node.MsgBuffer.ReqMsgs))
-		copy(msgs, node.MsgBuffer.ReqMsgs)
-		node.MsgDelivery <- msgs
-		node.MsgBuffer.ReqMsgs = nil
-	}
-}
-
-func (node *Node) sendPrepareMsgs() {
-	if len(node.MsgBuffer.PrepareMsgs) > 0 {
-		msgs := make([]*consensus.PrepareMsg, len(node.MsgBuffer.PrepareMsgs))
-		copy(msgs, node.MsgBuffer.PrepareMsgs)
-		node.MsgDelivery <- msgs
-	}
-}
-
-func (node *Node) sendConsensusMsgs(buffer []*consensus.ConsensusMsg) {
-	if len(buffer) > 0 {
-		msgs := make([]*consensus.ConsensusMsg, len(buffer))
-		copy(msgs, buffer)
-		node.MsgDelivery <- msgs
-	}
-}
+//func (node *Node) sendReqMsgs() {
+//	if len(node.MsgBuffer.ReqMsgs) > 0 {
+//		logger.Infof("message: %v", node.MsgBuffer.ReqMsgs)
+//		msgs := make([]*consensus.RequestMsg, len(node.MsgBuffer.ReqMsgs))
+//		copy(msgs, node.MsgBuffer.ReqMsgs)
+//		node.MsgDelivery <- msgs
+//		node.MsgBuffer.ReqMsgs = nil
+//	}
+//}
+//
+//func (node *Node) sendPrepareMsgs() {
+//	if len(node.MsgBuffer.PrepareMsgs) > 0 {
+//		msgs := make([]*consensus.PrepareMsg, len(node.MsgBuffer.PrepareMsgs))
+//		copy(msgs, node.MsgBuffer.PrepareMsgs)
+//		node.MsgDelivery <- msgs
+//	}
+//}
+//
+//func (node *Node) sendConsensusMsgs(buffer []*consensus.ConsensusMsg) {
+//	if len(buffer) > 0 {
+//		msgs := make([]*consensus.ConsensusMsg, len(buffer))
+//		copy(msgs, buffer)
+//		node.MsgDelivery <- msgs
+//	}
+//}
 
 func (node *Node) alarmToDispatcher() {
 	for {
@@ -234,22 +203,36 @@ func (node *Node) resolveMsg() {
 		msgs := <-node.MsgDelivery
 
 		switch m := msgs.(type) {
-		case []*consensus.RequestMsg:
-			go node.handleErrors(node.resolveRequestMsg(m))
+		case *consensus.RequestMsg:
+			go func() {
+				err := node.resolveRequestMsg(m)
+				if err != nil {
+					logger.Errorf("err while resolving request msg: %v", err)
+					panic(err)
+				}
+			}()
 
-		case []*consensus.PrepareMsg:
-			go node.handleErrors(node.resolvePrepareMsg(m))
+		case *consensus.PrepareMsg:
+			go func() {
+				err := node.resolvePrepareMsg(m)
+				if err != nil {
+					logger.Errorf("err while resolving prepare msg: %v", err)
+					panic(err)
+				}
+			}()
 
-		case []*consensus.ConsensusMsg:
-			if len(m) == 0 {
-				continue
-			}
-
-			switch m[0].MsgType {
+		case *consensus.ConsensusMsg:
+			switch m.MsgType {
 			case consensus.PreCommit:
-				node.handleErrors(node.resolvePreCommitMsg(m))
+				go func() {
+					err := node.resolvePreCommitMsg(m)
+					if err != nil {
+						logger.Errorf("err while resolving pre commit msg: %v", err)
+						panic(err)
+					}
+				}()
 			case consensus.Commit:
-				node.handleErrors(node.resolveCommitMsg(m))
+				go node.resolveCommitMsg(m)
 			case consensus.Decide:
 				node.handleErrors(node.resolveDecideMsg(m))
 			default:
@@ -267,139 +250,129 @@ func (node *Node) handleErrors(errs []error) {
 	}
 }
 
-func (node *Node) resolvePrepareMsg(msgs []*consensus.PrepareMsg) []error {
-	logger.Info("resolvePrepareMsgs")
+func (node *Node) resolvePrepareMsg(prepareMsg *consensus.PrepareMsg) error {
+	logger.Info("resolvePrepareMsg")
 
-	errs := make([]error, 0)
-
-	// Resolve messages
-	for _, prePrepareMsg := range msgs {
-		err := node.GetPrepare(prePrepareMsg)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	if len(errs) != 0 {
-		return errs
+	err := node.GetPrepare(prepareMsg)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (node *Node) resolveRequestMsg(msgs []*consensus.RequestMsg) []error {
+func (node *Node) resolveRequestMsg(reqMsg *consensus.RequestMsg) error {
 	logger.Info("resolveRequestMsg")
 
-	errs := make([]error, 0)
-
 	// Resolve messages
-	for _, reqMsg := range msgs {
-		logger.Infof("Request Message: %v", reqMsg)
+	if _, loaded := node.processingView.LoadOrStore(reqMsg.SequenceID, struct{}{}); loaded {
+		logger.Infof("[Client: %d][SequenceId: %d] Already being processed", reqMsg.ClientID, reqMsg.SequenceID)
+	} else {
 		node.createStateForNewConsensus(reqMsg)
-
-		// 메시지를 들어올 때마다 처리하도록
-		// 버퍼에 쌓을 필요 X
-		// 버퍼에 쌓고 1초 주기로 비우는 것보다 그냥 메세지 들어올 때마다 처리하는 것으로 수정
-		prePrepareMsg, err := node.CurrentState.StartConsensus(reqMsg)
-
-		logger.Infof("prePrepareMsg: %s", prePrepareMsg)
-		// HasQuorum
-		err = node.GetReq(reqMsg)
-		if err != nil {
-			errs = append(errs, err)
-		}
 	}
+	logger.Infof("Request Message: %v", reqMsg)
 
-	if len(errs) != 0 {
-		return errs
+	err := node.CurrentState.StartConsensus(reqMsg)
+
+	err = node.GetReq(reqMsg)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (node *Node) resolvePreCommitMsg(msgs []*consensus.ConsensusMsg) []error {
-	errs := make([]error, 0)
+func (node *Node) resolvePreCommitMsg(prepareMsg *consensus.ConsensusMsg) error {
 
-	// Resolve messages
-	for _, prepareMsg := range msgs {
-		err := node.GetPreCommit(prepareMsg)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	if len(errs) != 0 {
-		return errs
+	err := node.GetPreCommit(prepareMsg)
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func (node *Node) resolveCommitMsg(msgs []*consensus.ConsensusMsg) []error {
-	errs := make([]error, 0)
+func (node *Node) resolveCommitMsg(commitMsg *consensus.ConsensusMsg) []error {
 
-	// Resolve messages
-	for _, commitMsg := range msgs {
-		err := node.GetCommit(commitMsg)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	if len(errs) != 0 {
-		return errs
+	err := node.GetCommit(commitMsg)
+	if err != nil {
+		panic(err)
 	}
 
 	return nil
 }
 
-func (node *Node) resolveDecideMsg(msgs []*consensus.ConsensusMsg) []error {
-	errs := make([]error, 0)
+func (node *Node) resolveDecideMsg(decideMsg *consensus.ConsensusMsg) []error {
 
-	// Resolve messages
-	for _, commitMsg := range msgs {
-		err := node.GetDecide(commitMsg)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	if len(errs) != 0 {
-		return errs
+	err := node.GetDecide(decideMsg)
+	if err != nil {
+		panic(err)
 	}
 
 	return nil
 }
 
 func (node *Node) GetReq(reqMsg *consensus.RequestMsg) error {
+	logger.Info("1")
+	if _, loaded := node.processingView.LoadOrStore(reqMsg.SequenceID, struct{}{}); loaded {
+		logger.Infof("[Client: %d][SequenceId: %d] Already being processed", reqMsg.ClientID, reqMsg.SequenceID)
+		return nil
+	}
+	logger.Info("2")
 
-	if reqMsg != nil {
-		// Channel to signal when quorum is reached
-		quorumChan := make(chan struct{})
+	quorumChan := make(chan struct{})
 
-		// Goroutine to wait for quorum
-		go func() {
-			for {
-				if node.CurrentState.HasQuorum() {
-					close(quorumChan)
-					break
-				}
-				logger.Infof("[Msg: %d]Sleeping for %s", len(node.CurrentState.MsgLogs.PrepareMsgs), "10 * time.Millisecond")
-				time.Sleep(10 * time.Millisecond) // Polling interval (adjust as needed)
+	go func() {
+		for {
+			if node.CurrentState.HasQuorum() {
+				close(quorumChan)
+				break
 			}
-		}()
+			logger.Infof("[Msg: %d]Sleeping for %s", len(node.CurrentState.MsgLogs.PrepareMsgs), "1000 * time.Millisecond")
+			time.Sleep(1000 * time.Millisecond)
+		}
+	}()
 
-		// Wait for quorum
-		<-quorumChan
+	<-quorumChan
 
-		// Broadcast after quorum is reached
-		logger.Info("here")
-		node.Broadcast(reqMsg)
+	firstHash := util.Hash([]byte(node.CurrentState.MsgLogs.ReqMsg[0].Operation))
+
+	for _, msg := range node.CurrentState.MsgLogs.ReqMsg {
+		currentHash := util.Hash([]byte(msg.Operation))
+		if firstHash != currentHash {
+			panic("wrong hash")
+		} else {
+			logger.Info("Hash of Operation is all the same")
+		}
 	}
 
-	//if prePrepareMsg != nil {
-	//	node.Broadcast(prePrepareMsg)
-	//}
+	digest, err := util.Digest(reqMsg)
+	if err != nil {
+		logger.Errorf("digest error: %s", err)
+		return err
+	}
+
+	leaderSig := util.Hash([]byte(strconv.FormatUint(node.NodeID, 10)))
+
+	prepareMsg := &consensus.PrepareMsg{
+		ViewID:     node.CurrentState.ViewID,
+		SequenceID: reqMsg.SequenceID,
+		Digest:     digest,
+		RequestMsg: reqMsg,
+		NodeID:     node.NodeID,
+		Signature:  leaderSig,
+	}
+
+	// TODO: replica에서 Leader의 signature가 맞는지 확인하기
+	if node.CurrentState.MsgLogs.PrepareMsgs == nil {
+		node.CurrentState.MsgLogs.PrepareMsgs = make(map[string]*consensus.PrepareMsg)
+	}
+
+	node.CurrentState.MsgLogs.PrepareMsgs[digest] = prepareMsg
+	node.CurrentState.CurrentStage = consensus.Prepared
+
+	node.Broadcast(prepareMsg)
+
 	return nil
 }
 
