@@ -110,21 +110,14 @@ func (node *Node) routeMsg(msg interface{}) error {
 	switch m := msg.(type) {
 	case *consensus.RequestMsg:
 		node.processRequestMsg(m)
-
 	case *consensus.PrepareMsg:
 		node.processPrepareMsg(m)
-
-	case *consensus.ConsensusMsg:
-		switch m.MsgType {
-		case consensus.PreCommit:
-			node.processConsensusMsg(m, consensus.PreCommitted)
-		case consensus.Commit:
-			node.processConsensusMsg(m, consensus.Committed)
-		case consensus.Decide:
-			node.processConsensusMsg(m, consensus.Decided)
-		default:
-			panic("unhandled default case")
-		}
+	case *consensus.PreCommitMsg:
+		node.processPreCommitMsg(m)
+	case *consensus.CommitMsg:
+		node.processCommitMsg(m)
+	case *consensus.DecideMsg:
+		node.processDecideMsg(m)
 	}
 
 	return nil
@@ -138,10 +131,16 @@ func (node *Node) processPrepareMsg(msg *consensus.PrepareMsg) {
 	node.MsgDelivery <- msg
 }
 
-func (node *Node) processConsensusMsg(msg *consensus.ConsensusMsg, expectedStage consensus.Stage) {
-	if node.CurrentState != nil && node.CurrentState.CurrentStage == expectedStage {
-		node.MsgDelivery <- msg
-	}
+func (node *Node) processPreCommitMsg(msg *consensus.PreCommitMsg) {
+	node.MsgDelivery <- msg
+}
+
+func (node *Node) processCommitMsg(msg *consensus.CommitMsg) {
+	node.MsgDelivery <- msg
+}
+
+func (node *Node) processDecideMsg(msg *consensus.DecideMsg) {
+	node.MsgDelivery <- msg
 }
 
 func (node *Node) routeMsgWhenAlarmed() []error {
@@ -221,23 +220,34 @@ func (node *Node) resolveMsg() {
 				}
 			}()
 
-		case *consensus.ConsensusMsg:
-			switch m.MsgType {
-			case consensus.PreCommit:
-				go func() {
-					err := node.resolvePreCommitMsg(m)
-					if err != nil {
-						logger.Errorf("err while resolving pre commit msg: %v", err)
-						panic(err)
-					}
-				}()
-			case consensus.Commit:
-				go node.resolveCommitMsg(m)
-			case consensus.Decide:
-				node.handleErrors(node.resolveDecideMsg(m))
-			default:
-				panic("unhandled default case")
-			}
+		case *consensus.PreCommitMsg:
+			go func() {
+				err := node.resolvePreCommitMsg(m)
+				if err != nil {
+					logger.Errorf("err while resolving precommit msg: %v", err)
+					panic(err)
+				}
+			}()
+
+		case *consensus.CommitMsg:
+			go func() {
+				err := node.resolveCommitMsg(m)
+				if err != nil {
+					logger.Errorf("err while resolving commit msg: %v", err)
+					panic(err)
+				}
+			}()
+		case *consensus.DecideMsg:
+			go func() {
+				err := node.resolveDecideMsg(m)
+				if err != nil {
+					logger.Errorf("err while resolving decide msg: %v", err)
+					panic(err)
+				}
+			}()
+
+		default:
+			panic("unhandled message type")
 		}
 	}
 }
@@ -272,9 +282,9 @@ func (node *Node) resolveRequestMsg(reqMsg *consensus.RequestMsg) error {
 	}
 	logger.Infof("Request Message: %v", reqMsg)
 
-	err := node.CurrentState.StartConsensus(reqMsg)
+	node.CurrentState.StartConsensus(reqMsg)
 
-	err = node.GetReq(reqMsg)
+	err := node.GetReq(reqMsg)
 	if err != nil {
 		return err
 	}
@@ -282,7 +292,7 @@ func (node *Node) resolveRequestMsg(reqMsg *consensus.RequestMsg) error {
 	return nil
 }
 
-func (node *Node) resolvePreCommitMsg(prepareMsg *consensus.ConsensusMsg) error {
+func (node *Node) resolvePreCommitMsg(prepareMsg *consensus.PreCommitMsg) error {
 
 	err := node.GetPreCommit(prepareMsg)
 	if err != nil {
@@ -292,7 +302,7 @@ func (node *Node) resolvePreCommitMsg(prepareMsg *consensus.ConsensusMsg) error 
 	return nil
 }
 
-func (node *Node) resolveCommitMsg(commitMsg *consensus.ConsensusMsg) []error {
+func (node *Node) resolveCommitMsg(commitMsg *consensus.CommitMsg) []error {
 
 	err := node.GetCommit(commitMsg)
 	if err != nil {
@@ -302,7 +312,7 @@ func (node *Node) resolveCommitMsg(commitMsg *consensus.ConsensusMsg) []error {
 	return nil
 }
 
-func (node *Node) resolveDecideMsg(decideMsg *consensus.ConsensusMsg) []error {
+func (node *Node) resolveDecideMsg(decideMsg *consensus.DecideMsg) []error {
 
 	err := node.GetDecide(decideMsg)
 	if err != nil {
@@ -313,12 +323,10 @@ func (node *Node) resolveDecideMsg(decideMsg *consensus.ConsensusMsg) []error {
 }
 
 func (node *Node) GetReq(reqMsg *consensus.RequestMsg) error {
-	logger.Info("1")
-	if _, loaded := node.processingView.LoadOrStore(reqMsg.SequenceID, struct{}{}); loaded {
-		logger.Infof("[Client: %d][SequenceId: %d] Already being processed", reqMsg.ClientID, reqMsg.SequenceID)
-		return nil
-	}
-	logger.Info("2")
+	//if _, loaded := node.processingView.LoadOrStore(reqMsg.SequenceID, struct{}{}); loaded {
+	//	logger.Infof("[Client: %d][SequenceId: %d] Already being processed", reqMsg.ClientID, reqMsg.SequenceID)
+	//	return nil
+	//}
 
 	quorumChan := make(chan struct{})
 
@@ -365,10 +373,10 @@ func (node *Node) GetReq(reqMsg *consensus.RequestMsg) error {
 
 	// TODO: replica에서 Leader의 signature가 맞는지 확인하기
 	if node.CurrentState.MsgLogs.PrepareMsgs == nil {
-		node.CurrentState.MsgLogs.PrepareMsgs = make(map[string]*consensus.PrepareMsg)
+		node.CurrentState.MsgLogs.PrepareMsgs = []*consensus.PrepareMsg{}
 	}
 
-	node.CurrentState.MsgLogs.PrepareMsgs[digest] = prepareMsg
+	node.CurrentState.MsgLogs.PrepareMsgs = append(node.CurrentState.MsgLogs.PrepareMsgs, prepareMsg)
 	node.CurrentState.CurrentStage = consensus.Prepared
 
 	node.Broadcast(prepareMsg)
@@ -394,15 +402,15 @@ func (node *Node) GetPrepare(prepareMsg *consensus.PrepareMsg) error {
 	return nil
 }
 
-func (node *Node) GetPreCommit(commitMsg *consensus.ConsensusMsg) error {
+func (node *Node) GetPreCommit(commitMsg *consensus.PreCommitMsg) error {
 	return nil
 }
 
-func (node *Node) GetCommit(commitMsg *consensus.ConsensusMsg) error {
+func (node *Node) GetCommit(commitMsg *consensus.CommitMsg) error {
 	return nil
 }
 
-func (node *Node) GetDecide(commitMsg *consensus.ConsensusMsg) error {
+func (node *Node) GetDecide(commitMsg *consensus.DecideMsg) error {
 	return nil
 }
 

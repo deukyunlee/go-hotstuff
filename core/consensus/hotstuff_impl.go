@@ -18,9 +18,14 @@ type State struct {
 }
 
 type MsgLogs struct {
-	ReqMsg        []*RequestMsg
-	PrepareMsgs   map[string]*PrepareMsg
-	ConsensusMsgs map[string]*ConsensusMsg
+	ReqMsg           []*RequestMsg
+	PrepareVoteMsgs  []*PrepareVoteMsg
+	PrepareMsgs      []*PrepareMsg
+	PreCommitVoteMsg []*PreCommitVoteMsg
+	PreCommitMsgs    []*PreCommitMsg
+	DecideVoteMsg    []*DecideVoteMsg
+	NewViewMsg       []*NewViewMsg
+	DecideMsgs       []*DecideMsg
 }
 
 type Stage int
@@ -51,7 +56,7 @@ func (state *State) GetLeader() uint64 {
 	return id
 }
 
-func (state *State) StartConsensus(request *RequestMsg) error {
+func (state *State) StartConsensus(request *RequestMsg) {
 
 	sequenceId := uint64(0)
 
@@ -62,11 +67,9 @@ func (state *State) StartConsensus(request *RequestMsg) error {
 	request.SequenceID = sequenceId
 
 	state.MsgLogs.ReqMsg = append(state.MsgLogs.ReqMsg, request)
-
-	return nil
 }
 
-func (state *State) Prepare(prepareMsg *PrepareMsg) (*ConsensusMsg, error) {
+func (state *State) Prepare(prepareMsg *PrepareMsg) (*PreCommitMsg, error) {
 
 	/*
 		TODO
@@ -86,7 +89,7 @@ func (state *State) Prepare(prepareMsg *PrepareMsg) (*ConsensusMsg, error) {
 	return nil, nil
 }
 
-func (state *State) PreCommit(preCommitMsg *ConsensusMsg) (*ConsensusMsg, error) {
+func (state *State) PreCommit(preCommitMsg *PreCommitMsg) (*CommitMsg, error) {
 	/*
 		TODO
 		- as a leader // r = LEADER(curView)
@@ -102,7 +105,7 @@ func (state *State) PreCommit(preCommitMsg *ConsensusMsg) (*ConsensusMsg, error)
 	return nil, nil
 }
 
-func (state *State) Commit(commitMsg *ConsensusMsg) (*ConsensusMsg, error) {
+func (state *State) Commit(commitMsg *CommitMsg) (*DecideMsg, error) {
 	/*
 		TODO
 		- as a leader // r = LEADER(curView)
@@ -120,7 +123,7 @@ func (state *State) Commit(commitMsg *ConsensusMsg) (*ConsensusMsg, error) {
 	return nil, nil
 }
 
-func (state *State) Decide(decideMsg *ConsensusMsg) (*ConsensusMsg, error) {
+func (state *State) Decide(decideMsg *DecideMsg) error {
 	/*
 		TODO
 		- as a leader // r = LEADER(curView)
@@ -134,7 +137,7 @@ func (state *State) Decide(decideMsg *ConsensusMsg) (*ConsensusMsg, error) {
 			execute new commands through m.justify.node, respond to clients
 	*/
 
-	return nil, nil
+	return nil
 }
 
 // Finally

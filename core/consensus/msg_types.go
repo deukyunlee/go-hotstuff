@@ -4,9 +4,13 @@ type MsgType int
 
 const (
 	Request MsgType = iota
+	PrepareVote
 	Prepare
+	PreCommitVote
 	PreCommit
+	CommitVote
 	Commit
+	NewView
 	Decide
 )
 
@@ -38,8 +42,28 @@ type PrepareMsg struct {
 	Signature  string      `json:"signature"`  // Digital signature for message authenticity
 }
 
-// ConsensusMsg represents a generic message used in consensus phases
-type ConsensusMsg struct {
+// PreCommitMsg represents a message used in the PreCommit phase
+type PreCommitMsg struct {
+	ViewID     uint64  `json:"viewID"`     // The current view ID
+	SequenceID uint64  `json:"sequenceID"` // Sequence ID for ordering messages
+	Digest     string  `json:"digest"`     // Digest of the request or state
+	NodeID     uint64  `json:"nodeID"`     // ID of the node sending this message
+	MsgType    MsgType `json:"msgType"`    // Type of the consensus message
+	Signature  string  `json:"signature"`  // Digital signature for message authenticity
+}
+
+// CommitMsg represents a message used in the Commit phase
+type CommitMsg struct {
+	ViewID     uint64  `json:"viewID"`     // The current view ID
+	SequenceID uint64  `json:"sequenceID"` // Sequence ID for ordering messages
+	Digest     string  `json:"digest"`     // Digest of the request or state
+	NodeID     uint64  `json:"nodeID"`     // ID of the node sending this message
+	MsgType    MsgType `json:"msgType"`    // Type of the consensus message
+	Signature  string  `json:"signature"`  // Digital signature for message authenticity
+}
+
+// DecideMsg represents a message used in the DecideMsg phase
+type DecideMsg struct {
 	ViewID     uint64  `json:"viewID"`     // The current view ID
 	SequenceID uint64  `json:"sequenceID"` // Sequence ID for ordering messages
 	Digest     string  `json:"digest"`     // Digest of the request or state
@@ -62,4 +86,40 @@ type QuorumCert struct {
 	MsgType   MsgType
 	viewNum   uint64
 	signature []byte
+}
+
+type PrepareVoteMsg struct {
+	ViewID     uint64      `json:"viewID"`     // The current view ID
+	SequenceID uint64      `json:"sequenceID"` // Sequence ID for ordering messages
+	Digest     string      `json:"digest"`     // Digest of the request message
+	RequestMsg *RequestMsg `json:"requestMsg"` // The original request message
+	NodeID     uint64      `json:"nodeID"`     // ID of the node sending this message
+	Signature  string      `json:"signature"`  // Digital signature for message authenticity
+}
+
+type PreCommitVoteMsg struct {
+	ViewID     uint64  `json:"viewID"`     // The current view ID
+	SequenceID uint64  `json:"sequenceID"` // Sequence ID for ordering messages
+	Digest     string  `json:"digest"`     // Digest of the request or state
+	NodeID     uint64  `json:"nodeID"`     // ID of the node sending this message
+	MsgType    MsgType `json:"msgType"`    // Type of the consensus message
+	Signature  string  `json:"signature"`  // Digital signature for message authenticity
+}
+
+type CommitVoteMsg struct {
+	ViewID     uint64  `json:"viewID"`     // The current view ID
+	SequenceID uint64  `json:"sequenceID"` // Sequence ID for ordering messages
+	Digest     string  `json:"digest"`     // Digest of the request or state
+	NodeID     uint64  `json:"nodeID"`     // ID of the node sending this message
+	MsgType    MsgType `json:"msgType"`    // Type of the consensus message
+	Signature  string  `json:"signature"`  // Digital signature for message authenticity
+}
+
+type DecideVoteMsg struct {
+	ViewID     uint64  `json:"viewID"`     // The current view ID
+	SequenceID uint64  `json:"sequenceID"` // Sequence ID for ordering messages
+	Digest     string  `json:"digest"`     // Digest of the request or state
+	NodeID     uint64  `json:"nodeID"`     // ID of the node sending this message
+	MsgType    MsgType `json:"msgType"`    // Type of the consensus message
+	Signature  string  `json:"signature"`  // Digital signature for message authenticity
 }

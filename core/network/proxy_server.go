@@ -160,13 +160,27 @@ func (node *Node) handleConnection(id uint64, conn net.Conn) {
 				logger.Errorf("Node %d: Error unmarshalling message: %v", id, err)
 			}
 			node.MsgDelivery <- &prepareMsg
-		case consensus.PreCommit, consensus.Commit, consensus.Decide:
-			var consensusMsg consensus.ConsensusMsg
-			err := json.Unmarshal(buffer[:n], &consensusMsg)
+		case consensus.PreCommit:
+			var preCommitMsg consensus.PreCommitMsg
+			err := json.Unmarshal(buffer[:n], &preCommitMsg)
 			if err != nil {
 				logger.Errorf("Node %d: Error unmarshalling message: %v", id, err)
 			}
-			node.MsgDelivery <- &consensusMsg
+			node.MsgDelivery <- &preCommitMsg
+		case consensus.Commit:
+			var commitMsg consensus.CommitMsg
+			err := json.Unmarshal(buffer[:n], &commitMsg)
+			if err != nil {
+				logger.Errorf("Node %d: Error unmarshalling message: %v", id, err)
+			}
+			node.MsgDelivery <- &commitMsg
+		case consensus.Decide:
+			var decideMsg consensus.DecideMsg
+			err := json.Unmarshal(buffer[:n], &decideMsg)
+			if err != nil {
+				logger.Errorf("Node %d: Error unmarshalling message: %v", id, err)
+			}
+			node.MsgDelivery <- &decideMsg
 		default:
 			logger.Errorf("Node %d: Unrecognized message type: %v", id, rawMsgType)
 		}
