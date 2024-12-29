@@ -4,18 +4,11 @@ The go-hotstuff project is a lightweight implementation of the HotStuff consensu
 - https://arxiv.org/pdf/1803.05069
 
 ## How to Build & Run
-### Using Docker
-To build and run the application with Docker, use the following command:
-    `docker compose up --build`
 
-### Natively
 To build and run the application natively, execute:
     `sh start.sh`
 
 ## How to Kill process
-### Using Docker
-To stop and remove the Docker containers, run:
-    `docker compose down`
 
 ### Natively
 To kill the running process natively, use:
@@ -23,7 +16,6 @@ To kill the running process natively, use:
 
 ## Dependencies
 - Go (version 1.17 or higher)
-- Docker (if using Docker)
 
 ## Contributing
 Contributions are welcome! If you would like to contribute to the HotStuff Small Protocol, please follow these steps:

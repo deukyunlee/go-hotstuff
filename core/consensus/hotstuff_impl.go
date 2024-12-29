@@ -10,28 +10,18 @@ var (
 )
 
 type State struct {
-	ViewID         uint64
-	MsgLogs        *MsgLogs
-	LastSequenceID uint64
-	CurrentStage   Stage
-	mu             *sync.Mutex
-}
-
-type MsgLogs struct {
-	ReqMsg           []*RequestMsg
-	PrepareVoteMsgs  []*PrepareVoteMsg
-	PrepareMsgs      []*PrepareMsg
-	PreCommitVoteMsg []*PreCommitVoteMsg
-	PreCommitMsgs    []*PreCommitMsg
-	DecideVoteMsg    []*DecideVoteMsg
-	NewViewMsg       []*NewViewMsg
-	DecideMsgs       []*DecideMsg
+	ViewID           uint64
+	LastSequenceID   uint64
+	CurrentStage     Stage
+	VerifiedMsgCount uint64
+	Verified         bool
+	Mu               *sync.Mutex
 }
 
 type Stage int
 
 const (
-	Idle Stage = iota
+	Requested Stage = iota
 	Prepared
 	PreCommitted
 	Committed
@@ -57,16 +47,7 @@ func (state *State) GetLeader() uint64 {
 }
 
 func (state *State) StartConsensus(request *RequestMsg) {
-
-	sequenceId := uint64(0)
-
-	if sequenceId <= state.LastSequenceID {
-		sequenceId = state.LastSequenceID + 1
-	}
-
-	request.SequenceID = sequenceId
-
-	state.MsgLogs.ReqMsg = append(state.MsgLogs.ReqMsg, request)
+	request.SequenceID = state.LastSequenceID + 1
 }
 
 func (state *State) Prepare(prepareMsg *PrepareMsg) (*PreCommitMsg, error) {
@@ -145,13 +126,13 @@ func (state *State) Decide(decideMsg *DecideMsg) error {
 // send MSG(NEW-VIEW, ㅗ, prepareQC) to LEADER(curView + 1)
 
 func (state *State) HasQuorum() bool {
+	state.Mu.Lock()
+	defer state.Mu.Unlock()
+
 	totalReplicas := 4
-	quorumSize := (2 * totalReplicas) / 3
+	quorumSize := uint64((2 * totalReplicas) / 3)
 
-	//state.mu.Lock()
-	//defer state.mu.Unlock()
-
-	responseCount := len(state.MsgLogs.ReqMsg)
+	responseCount := state.VerifiedMsgCount + 1
 	logger.Infof("[Required: %d], [Got: %d]", quorumSize, responseCount)
 	return responseCount >= quorumSize
 }

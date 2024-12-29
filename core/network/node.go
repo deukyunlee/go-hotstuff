@@ -2,10 +2,8 @@ package network
 
 import (
 	"deukyunlee/hotstuff/core/consensus"
-	"deukyunlee/hotstuff/util"
 	"encoding/json"
 	"net"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -17,9 +15,14 @@ type Node struct {
 	CommittedMsgs   []*consensus.RequestMsg
 	MsgDelivery     chan interface{}
 	Alarm           chan bool
+	MsgCount        chan interface{}
 	Connections     []net.Conn
 	LocalConnection net.Conn
 	processingView  sync.Map
+}
+
+type MessageForCount struct {
+	ViewId uint64
 }
 
 type View struct {
@@ -40,10 +43,12 @@ func NewNode(nodeID uint64) *Node {
 		},
 
 		CurrentState: &consensus.State{
-			ViewID:         startViewId,
-			MsgLogs:        &consensus.MsgLogs{},
-			LastSequenceID: 1,
-			CurrentStage:   consensus.Idle,
+			startViewId,
+			0,
+			consensus.Requested,
+			1,
+			false,
+			&sync.Mutex{},
 		},
 		CommittedMsgs: make([]*consensus.RequestMsg, 0),
 		MsgDelivery:   make(chan interface{}),
@@ -275,14 +280,20 @@ func (node *Node) resolveRequestMsg(reqMsg *consensus.RequestMsg) error {
 	logger.Info("resolveRequestMsg")
 
 	// Resolve messages
-	if _, loaded := node.processingView.LoadOrStore(reqMsg.SequenceID, struct{}{}); loaded {
-		logger.Infof("[Client: %d][SequenceId: %d] Already being processed", reqMsg.ClientID, reqMsg.SequenceID)
-	} else {
-		node.createStateForNewConsensus(reqMsg)
-	}
+	//if _, loaded := node.processingView.LoadOrStore(reqMsg.SequenceID, struct{}{}); loaded {
+	//	logger.Infof("[Client: %d][SequenceId: %d] Already being processed", reqMsg.ClientID, reqMsg.SequenceID)
+	//} else {
+	//node.createStateForNewConsensus(reqMsg)
+	//}
+
+	// 메시지 검증
+	// 검증 후 메시지 카운트 mu lock
+	// 메시지 카운트 증가
+	// channel로 메시지 카운트 증가했다는 메시지 보내기
+	// mu lock 해제
 	logger.Infof("Request Message: %v", reqMsg)
 
-	node.CurrentState.StartConsensus(reqMsg)
+	//node.CurrentState.StartConsensus(reqMsg)
 
 	err := node.GetReq(reqMsg)
 	if err != nil {
@@ -328,58 +339,58 @@ func (node *Node) GetReq(reqMsg *consensus.RequestMsg) error {
 	//	return nil
 	//}
 
-	quorumChan := make(chan struct{})
+	// Msg 유효성 검증만
+	//quorumChan := make(chan struct{})
 
-	go func() {
-		for {
-			if node.CurrentState.HasQuorum() {
-				close(quorumChan)
-				break
-			}
-			logger.Infof("[Msg: %d]Sleeping for %s", len(node.CurrentState.MsgLogs.PrepareMsgs), "1000 * time.Millisecond")
-			time.Sleep(1000 * time.Millisecond)
-		}
-	}()
+	//go func() {
+	//	for {
+	//		if node.CurrentState.HasQuorum() {
+	//			close(quorumChan)
+	//			break
+	//		}
+	//		logger.Infof("[Msg: %d]Sleeping for %s", node.CurrentState.VerifiedMsgCount, "1000 * time.Millisecond")
+	//		time.Sleep(1000 * time.Millisecond)
+	//	}
+	//}()
 
-	<-quorumChan
+	//<-quorumChan
 
-	firstHash := util.Hash([]byte(node.CurrentState.MsgLogs.ReqMsg[0].Operation))
+	// 채널로 카운트 보내기 -> 그러면 이 메서드에서 할 일은 끄탄ㅁ
+	// 카운트를 받은 채널에서 로직 태우기
 
-	for _, msg := range node.CurrentState.MsgLogs.ReqMsg {
-		currentHash := util.Hash([]byte(msg.Operation))
-		if firstHash != currentHash {
-			panic("wrong hash")
-		} else {
-			logger.Info("Hash of Operation is all the same")
-		}
-	}
+	//firstHash := util.Hash([]byte(node.CurrentState.MsgLogs.ReqMsg[0].Operation))
+	//
+	//for _, msg := range node.CurrentState.MsgLogs.ReqMsg {
+	//	currentHash := util.Hash([]byte(msg.Operation))
+	//	if firstHash != currentHash {
+	//		panic("wrong hash")
+	//	} else {
+	//		logger.Info("Hash of Operation is all the same")
+	//	}
+	//}
 
-	digest, err := util.Digest(reqMsg)
-	if err != nil {
-		logger.Errorf("digest error: %s", err)
-		return err
-	}
+	//digest, err := util.Digest(reqMsg)
+	//if err != nil {
+	//	logger.Errorf("digest error: %s", err)
+	//	return err
+	//}
+	//
+	//leaderSig := util.Hash([]byte(strconv.FormatUint(node.NodeID, 10)))
+	//
+	//prepareMsg := &consensus.PrepareMsg{
+	//	ViewID:     node.CurrentState.ViewID,
+	//	SequenceID: reqMsg.SequenceID,
+	//	Digest:     digest,
+	//	RequestMsg: reqMsg,
+	//	NodeID:     node.NodeID,
+	//	Signature:  leaderSig,
+	//}
 
-	leaderSig := util.Hash([]byte(strconv.FormatUint(node.NodeID, 10)))
+	//node.CurrentState.CurrentStage = consensus.Prepared
 
-	prepareMsg := &consensus.PrepareMsg{
-		ViewID:     node.CurrentState.ViewID,
-		SequenceID: reqMsg.SequenceID,
-		Digest:     digest,
-		RequestMsg: reqMsg,
-		NodeID:     node.NodeID,
-		Signature:  leaderSig,
-	}
+	//node.Broadcast(prepareMsg)
 
 	// TODO: replica에서 Leader의 signature가 맞는지 확인하기
-	if node.CurrentState.MsgLogs.PrepareMsgs == nil {
-		node.CurrentState.MsgLogs.PrepareMsgs = []*consensus.PrepareMsg{}
-	}
-
-	node.CurrentState.MsgLogs.PrepareMsgs = append(node.CurrentState.MsgLogs.PrepareMsgs, prepareMsg)
-	node.CurrentState.CurrentStage = consensus.Prepared
-
-	node.Broadcast(prepareMsg)
 
 	return nil
 }
@@ -415,12 +426,10 @@ func (node *Node) GetDecide(commitMsg *consensus.DecideMsg) error {
 }
 
 func (node *Node) createStateForNewConsensus(reqMsg *consensus.RequestMsg) {
-	if node.CurrentState == nil {
-		node.CurrentState = &consensus.State{}
-		node.CurrentState.MsgLogs = &consensus.MsgLogs{}
-	}
-
-	node.CurrentState.ViewID = node.View.ID
+	// ViewID를 여기서 증가시켜 주는 게 아닐 거 같음.
+	// 메시지의 상태가 변한 순간 처리해주기
+	//
+	node.CurrentState.ViewID = node.View.ID + 1
 	node.CurrentState.LastSequenceID = reqMsg.SequenceID
-	node.CurrentState.CurrentStage = consensus.Idle
+	node.CurrentState.CurrentStage = consensus.Requested
 }
