@@ -1,18 +1,12 @@
 package main
 
 import (
-	"deukyunlee/hotstuff/core/network"
-	"deukyunlee/hotstuff/logging"
+	"deukyunlee/hotstuff/block"
+	"deukyunlee/hotstuff/node"
 	"flag"
-	"os"
-)
-
-var (
-	logger = logging.GetLogger()
 )
 
 var Id uint64
-var runningInDocker bool
 
 func init() {
 	idPtr := flag.Uint64("id", 1, "hotstuff Node ID")
@@ -20,16 +14,18 @@ func init() {
 	flag.Parse()
 
 	Id = *idPtr
-	runningInDocker = os.Getenv("RUNNING_IN_DOCKER") == "true"
 }
 
 func main() {
-	node := network.StartNewNode(Id, runningInDocker)
-	logger.Info("starting server: %v", node)
+	n := node.StartNewNode(Id)
 
-	// INITIAL LEADER is node 1
-	logger.Infof("current state: %v, Leader: %v", node.CurrentState, node.CurrentState.GetLeader())
+	if n.IsLeaderNode() {
+		genesisBlock := block.CreateBlock(nil, "Genesis Block", 0)
 
-	node.SendInitialRequestMsg()
-	select {}
+		n.BlockChain[genesisBlock.Hash] = genesisBlock
+
+		newBlock := block.CreateBlock(genesisBlock, "Block 1", genesisBlock.Number+1)
+
+		n.Propose(newBlock)
+	}
 }
