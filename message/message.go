@@ -20,4 +20,6 @@ type Message struct {
 	Block     *block.Block
 	SenderID  uint64
 	Signature string
+	View      uint64	
+    QC        *QuorumCertificate
 }

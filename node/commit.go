@@ -1,22 +1,25 @@
 package node
 
 import (
-	"deukyunlee/hotstuff/block"
 	"deukyunlee/hotstuff/message"
 )
 
-func (n *Node) ReplyCommit(block *block.Block) {
-	logger.Infof("Node %d: Replying to Commit with vote for block %s\n", n.ID, block.Hash)
+func (n *Node) ReplyCommit(msg message.Message) {
+	block := msg.Block
+
+	logger.Infof("Replying to Commit with vote for block %s\n", block.Hash)
+
 	n.Unicast(message.Message{
 		Type:     message.CommitReply,
 		Block:    block,
 		SenderID: n.ID,
+		View:     msg.View,
 	}, n.GetLeaderID())
 }
 
 func (n *Node) HandleCommitReply(msg message.Message) {
 	if !n.IsLeaderNode() {
-		logger.Errorf("Node %d: Cannot handle CommitReply. Only the leader can process this message.\n", n.ID)
+		logger.Errorf("Cannot handle CommitReply. Only the leader can process this message.\n")
 		return
 	}
 
@@ -26,6 +29,14 @@ func (n *Node) HandleCommitReply(msg message.Message) {
 	if uint64(len(n.MsgBuffer[message.CommitReply])) >= n.Quorum {
 		logger.Infof("Leader Node %d: Quorum reached in Commit phase. Block committed.\n", n.ID)
 		n.Committed = append(n.Committed, n.PendingBlock)
+
+		n.Broadcast(message.Message{
+			Type:     message.Decide,
+			Block:    n.PendingBlock,
+			SenderID: n.ID,
+			View:     n.View,
+		})
+
 		n.PendingBlock = nil
 		n.RotateView()
 	}
@@ -33,5 +44,5 @@ func (n *Node) HandleCommitReply(msg message.Message) {
 
 func (n *Node) RotateView() {
 	n.View++
-	logger.Infof("Node %d: Rotating to View %d. New Leader: Node %d\n", n.ID, n.View, n.GetLeaderID())
+	logger.Infof("Rotating to View %d. New Leader: Node %d\n", n.View, n.GetLeaderID())
 }

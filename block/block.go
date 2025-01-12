@@ -1,6 +1,7 @@
 package block
 
 import (
+	"deukyunlee/hotstuff/types"
 	"fmt"
 	"time"
 )
@@ -11,9 +12,17 @@ type Block struct {
 	Parent    *Block
 	Timestamp time.Time
 	Data      string
+	View      uint64
+	ParentQC  *types.QuorumCertificate
+    ProposerID uint64
+    Height    uint64	
 }
 
-func CreateBlock(parent *Block, data string, blockNumber uint64) *Block {
+func CreateBlock(parent *Block, data string) *Block {
+	var blockNumber uint64 = 1
+	if parent != nil {
+		blockNumber = parent.Number + 1
+	}
 	return &Block{
 		Number:    blockNumber,
 		Hash:      fmt.Sprintf("%x", time.Now().UnixNano()),

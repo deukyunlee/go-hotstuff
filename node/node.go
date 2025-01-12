@@ -5,6 +5,9 @@ import (
 	"deukyunlee/hotstuff/logging"
 	"deukyunlee/hotstuff/message"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"net"
 	"sync"
 	"time"
@@ -54,110 +57,95 @@ func NewNode(id, totalNodes, quorum uint64) *Node {
 }
 
 func StartNewNode(nodeId uint64) *Node {
-	return setNode(nodeId, NodeTable[nodeId])
-}
-
-func setNode(nodeId uint64, address string) *Node {
-
 	node := NewNode(nodeId, 4, 3)
-
-	go node.startServer(nodeId, address)
-
+	
+	// 1. 먼저 서버를 시작하고 준비될 때까지 대기
+	serverReady := make(chan bool)
+	go node.startServer(nodeId, NodeTable[nodeId], serverReady)
+	
+	// 서버가 준비될 때까지 대기
+	<-serverReady
+	logger.Infof("Node %d: Server is ready and listening", nodeId)
+	
+	// 2. 잠시 대기하여 다른 노드들의 서버도 준비되도록 함
+	time.Sleep(time.Duration(nodeId) * time.Second)
+	
+	// 3. 다른 노드들과 연결 시도
 	for otherId, otherAddress := range NodeTable {
 		if otherId != nodeId {
-			err := node.startClientWithRetry(nodeId, otherId, otherAddress)
+			err := node.startClientWithRetry(otherId, otherAddress)
 			if err != nil {
-				logger.Errorf("Failed to connect to node %d after %d attempts: %v\n", otherId, RetryCount, err)
+				logger.Errorf("Node %d: Failed to connect to node %d after %d attempts: %v\n", 
+					nodeId, otherId, RetryCount, err)
 				panic(err)
 			}
 		}
 	}
-
+	
 	return node
 }
 
-func (n *Node) startClientWithRetry(nodeId uint64, otherId uint64, otherAddress string) error {
-	var err error
-	var conn net.Conn
-	for i := uint64(0); i < RetryCount; i++ {
-		conn, err = n.startClient(nodeId, otherId, otherAddress)
-
-		if err == nil {
-			logger.Infof("Node %d: Connected to Node %d [LOCAL: %s] [REMOTE: %s]\n", nodeId, otherId, conn.LocalAddr(), conn.RemoteAddr())
-			n.Connections[i] = conn
-			break
-		}
-
-		logger.Errorf("Failed to connect to node %d (attempt %d/%d): %v\n", otherId, i+1, RetryCount, err)
-
-		time.Sleep(ConnectionDelay)
-	}
-	return err
-}
-
-func (n *Node) startClient(id, otherID uint64, address string) (net.Conn, error) {
-	conn, err := net.Dial(TcpNetworkType, address)
-	if err != nil {
-		logger.Errorf("Node %d: Error connecting to Node %d at %s: %v\n", id, otherID, address, err)
-		return nil, err
-	}
-
-	logger.Infof("Node %d: Connected to Node %d [LOCAL: %s] [REMOTE: %s]\n", id, otherID, conn.LocalAddr(), conn.RemoteAddr())
-	return conn, nil
-}
-
-func (n *Node) startServer(nodeId uint64, address string) {
+func (n *Node) startServer(nodeId uint64, address string, ready chan bool) {
 	ln, err := net.Listen(TcpNetworkType, address)
 	if err != nil {
 		logger.Errorf("Node %d: Error starting server: %v\n", nodeId, err)
+		panic(err)
 	}
-
-	if NodeTable[nodeId] == "" {
-		panic("Unable to get server info")
-	}
-
+	
+	logger.Infof("Node %d: Server started on %s", nodeId, address)
+	ready <- true
+	
 	for {
-		logger.Infof("Waiting for connection on %s", address)
-
-		conn, err := n.startServerWithRetry(nodeId, ln)
-
+		conn, err := ln.Accept()
 		if err != nil {
-			logger.Errorf("Failed to connect to node %d after %d attempts: %d\n", nodeId, RetryCount, err)
-			panic(err)
+			logger.Errorf("Node %d: Failed to accept connection: %v\n", nodeId, err)
+			continue
 		}
-
-		logger.Infof("[%d]Connection accepted from %s\n", n.ID, conn.RemoteAddr().String())
-
+		
+		logger.Infof("Node %d: Connection accepted from %s\n", nodeId, conn.RemoteAddr().String())
 		n.LocalConnection = conn
-
-		go n.handleConnection(nodeId, conn)
+		go n.handleConnection(conn)
 	}
 }
 
-func (n *Node) handleConnection(id uint64, conn net.Conn) {
-	logger.Infof("Node %d: Accepted connection from %s\n", id, conn.RemoteAddr().String())
+func (n *Node) startClientWithRetry(otherId uint64, otherAddress string) error {
+	var err error
+	var conn net.Conn
+	
+	const maxRetries = 15
+	const initialDelay = 1 * time.Second
+	
+	for i := 0; i < maxRetries; i++ {
+		conn, err = n.startClient(otherId, otherAddress)
+		if err == nil {
+			n.Connections[otherId] = conn
+			return nil
+		}
+		
+		delay := initialDelay * time.Duration(i+1)
+		logger.Infof("Retrying connection to Node %d in %v (attempt %d/%d)",otherId, delay, i+1, maxRetries)
+		time.Sleep(delay)
+	}
+	
+	return fmt.Errorf("failed to connect after %d attempts: %v", maxRetries, err)
+}
 
-	buffer := make([]byte, 1024)
-
-	rawMsg, err := conn.Read(buffer)
-
-	var msg message.Message
-	err = json.Unmarshal(buffer[:rawMsg], &msg)
+func (n *Node) startClient(otherID uint64, address string) (net.Conn, error) {
+	conn, err := net.Dial(TcpNetworkType, address)
 	if err != nil {
-		logger.Errorf("Node %d: Error unmarshalling message: %v", id, err)
-		return
+		logger.Errorf("Error connecting to Node %d at %s: %v\n", otherID, address, err)
+		return nil, err
 	}
 
-	logger.Infof("[NodeId: %d] rawMsg: %v", n.ID, msg)
-
-	go n.ReceiveMessage(msg)
+	logger.Infof("Connected to Node %d [LOCAL: %s] [REMOTE: %s]\n", otherID, conn.LocalAddr(), conn.RemoteAddr())
+	return conn, nil
 }
 
 func (n *Node) startServerWithRetry(nodeId uint64, ln net.Listener) (conn net.Conn, err error) {
 	for i := 0; i < RetryCount; i++ {
 		conn, err = ln.Accept()
 		if err == nil {
-			logger.Infof("Node %d: accepting connection: %v\n", nodeId, err)
+			logger.Infof("accepting connection: %v\n", conn.RemoteAddr())
 
 			break
 		}
@@ -169,17 +157,46 @@ func (n *Node) startServerWithRetry(nodeId uint64, ln net.Listener) (conn net.Co
 	return conn, err
 }
 
+func (n *Node) handleConnection(conn net.Conn) {
+	logger.Infof("Accepted connection from %s\n", conn.RemoteAddr().String())
+	
+	for {
+		buffer := make([]byte, 4096)
+		
+		rawMsg, err := conn.Read(buffer)
+		if err != nil {
+			if err != io.EOF {
+				logger.Errorf("Error reading from connection: %v", err)
+			}
+			return
+		}
+		
+		if rawMsg > 0 {
+			var msg message.Message
+			err = json.Unmarshal(buffer[:rawMsg], &msg)
+			if err != nil {
+				logger.Errorf("Error unmarshalling message: %v\nRaw message: %s", err, string(buffer[:rawMsg]))
+				continue
+			}
+			
+			logger.Infof("[NodeId: %d] Received message: %+v", n.ID, msg)
+			
+			go n.ReceiveMessage(msg)
+		}
+	}
+}
+
 func (n *Node) ReceiveMessage(msg message.Message) {
 	n.Mutex.Lock()
 	defer n.Mutex.Unlock()
 
-	logger.Infof("Node %d: Received message %v\n", n.ID, msg)
+	logger.Infof("Received message %v\n", msg)
 	n.MsgBuffer[msg.Type] = append(n.MsgBuffer[msg.Type], msg)
 
 	switch msg.Type {
 	case message.Prepare:
 		if !n.IsLeaderNode() {
-			n.ReplyPrepare(msg.Block)
+			n.ReplyPrepare(msg)
 		}
 	case message.PrepareReply:
 		if n.IsLeaderNode() {
@@ -187,7 +204,7 @@ func (n *Node) ReceiveMessage(msg message.Message) {
 		}
 	case message.PreCommit:
 		if !n.IsLeaderNode() {
-			n.ReplyPreCommit(msg.Block)
+			n.ReplyPreCommit(msg)
 		}
 	case message.PreCommitReply:
 		if n.IsLeaderNode() {
@@ -195,13 +212,40 @@ func (n *Node) ReceiveMessage(msg message.Message) {
 		}
 	case message.Commit:
 		if !n.IsLeaderNode() {
-			n.ReplyCommit(msg.Block)
+			n.ReplyCommit(msg)
 		}
 	case message.CommitReply:
 		if n.IsLeaderNode() {
 			n.HandleCommitReply(msg)
 		}
+	case message.Decide:
+		n.HandleDecide(msg)
+
 	default:
 		panic("unhandled default case")
 	}
+}
+
+func (n *Node) ValidateBlock(b *block.Block) error {
+	if b == nil {
+		return errors.New("block is nil")
+	}
+
+	if b.Hash == "" {
+		return errors.New("block hash is empty")
+	}
+
+	if b.Parent == nil {
+		return errors.New("previous block hash is empty")
+	}
+
+	//if b.View < n.View {
+	//	return fmt.Errorf("block view %d is less than current node view %d", b.View, n.View)
+	//}
+
+	//if !n.verifySignature(b.Signature, b.Hash, b.ProposerID) {
+	//	return errors.New("invalid block signature")
+	//}
+
+	return nil
 }

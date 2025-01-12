@@ -1,22 +1,24 @@
 package node
 
 import (
-	"deukyunlee/hotstuff/block"
 	"deukyunlee/hotstuff/message"
 )
 
-func (n *Node) ReplyPreCommit(block *block.Block) {
-	logger.Infof("Node %d: Replying to PreCommit with vote for block %s\n", n.ID, block.Hash)
+func (n *Node) ReplyPreCommit(msg message.Message) {
+	block := msg.Block
+
+	logger.Infof("Replying to PreCommit with vote for block %s\n", block.Hash)
 	n.Unicast(message.Message{
 		Type:     message.PreCommitReply,
 		Block:    block,
 		SenderID: n.ID,
+		View:     msg.View,
 	}, n.GetLeaderID())
 }
 
 func (n *Node) HandlePreCommitReply(msg message.Message) {
 	if !n.IsLeaderNode() {
-		logger.Errorf("Node %d: Cannot handle PreCommitReply. Only the leader can process this message.\n", n.ID)
+		logger.Errorf("Cannot handle PreCommitReply. Only the leader can process this message.\n")
 		return
 	}
 
@@ -29,6 +31,7 @@ func (n *Node) HandlePreCommitReply(msg message.Message) {
 			Type:     message.Commit,
 			Block:    n.PendingBlock,
 			SenderID: n.ID,
+			View:     n.View,
 		})
 	}
 }

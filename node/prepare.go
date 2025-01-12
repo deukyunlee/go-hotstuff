@@ -1,16 +1,24 @@
 package node
 
 import (
-	"deukyunlee/hotstuff/block"
 	"deukyunlee/hotstuff/message"
 )
 
-func (n *Node) ReplyPrepare(block *block.Block) {
-	logger.Infof("Node %d: Replying to Prepare with vote for block %s\n", n.ID, block.Hash)
+func (n *Node) ReplyPrepare(msg message.Message) {
+	block := msg.Block
+
+	logger.Infof("Replying to Prepare with vote for block %s\n", block.Hash)
+
+	if err := n.ValidateBlock(block); err != nil {
+		logger.Warnf("Invalid block. Err: %s\n", err)
+		return
+	}
+
 	n.Unicast(message.Message{
 		Type:     message.PrepareReply,
 		Block:    block,
 		SenderID: n.ID,
+		View:     msg.View,
 	}, n.GetLeaderID())
 }
 
@@ -29,6 +37,7 @@ func (n *Node) HandlePrepareReply(msg message.Message) {
 			Type:     message.PreCommit,
 			Block:    n.PendingBlock,
 			SenderID: n.ID,
+			View:     n.View,
 		})
 	}
 }

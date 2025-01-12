@@ -2,8 +2,8 @@ package node
 
 import (
 	"deukyunlee/hotstuff/message"
+	"encoding/binary"
 	"encoding/json"
-	"net"
 )
 
 func (n *Node) Broadcast(msg message.Message) {
@@ -13,29 +13,21 @@ func (n *Node) Broadcast(msg message.Message) {
 		return
 	}
 
-	workerCount := uint64(len(n.Connections) - 1)
-	jobs := make(chan net.Conn, workerCount)
+	lengthBuf := make([]byte, 4)
+	binary.BigEndian.PutUint32(lengthBuf, uint32(len(jsonMsg)))
 
-	for i := uint64(0); i < workerCount; i++ {
-		go func() {
-			for conn := range jobs {
-				if i == n.ID {
-					continue
-				}
-				_, err := conn.Write(jsonMsg)
-				if err != nil {
-					logger.Errorf("Failed to send message to %s: %v", conn.RemoteAddr(), err)
-				}
-			}
-		}()
+	fullMsg := append(lengthBuf, jsonMsg...)
+
+	for targetId, conn := range n.Connections {
+		if targetId == n.ID {
+			continue
+		}
+
+		_, err := conn.Write(fullMsg)
+		if err != nil {
+			logger.Errorf("Failed to send message to Node %d: %v", targetId, err)
+		}
 	}
-
-	for _, conn := range n.Connections {
-		jobs <- conn
-	}
-
-	logger.Infof("closing job for Message: %v\n", msg)
-	close(jobs)
 }
 
 func (n *Node) Unicast(msg message.Message, id uint64) {
