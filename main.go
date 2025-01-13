@@ -5,6 +5,7 @@ import (
 	"deukyunlee/hotstuff/message"
 	"deukyunlee/hotstuff/node"
 	"flag"
+	"time"
 )
 
 var Id uint64
@@ -62,5 +63,7 @@ func main() {
 		n.Propose(msg)
 	}
 
-	for {}
+	for {
+		time.Sleep(100 * time.Millisecond)
+	}
 }

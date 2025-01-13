@@ -19,6 +19,7 @@ func (n *Node) Broadcast(msg message.Message) {
 	fullMsg := append(lengthBuf, jsonMsg...)
 
 	for targetId, conn := range n.Connections {
+		logger.Infof("Broadcasting message to Node %d\n", targetId)
 		if targetId == n.ID {
 			continue
 		}
@@ -33,10 +34,19 @@ func (n *Node) Broadcast(msg message.Message) {
 func (n *Node) Unicast(msg message.Message, id uint64) {
 	jsonMsg, err := json.Marshal(msg)
 	if err != nil {
-		logger.Errorf("Failed to marshall msg: %v\n", jsonMsg)
+		logger.Errorf("Failed to marshall msg: %v\n", err)
+		return
 	}
 
-	_, err = n.Connections[id].Write(jsonMsg)
+	lengthBuf := make([]byte, 4)
+	binary.BigEndian.PutUint32(lengthBuf, uint32(len(jsonMsg)))
+
+	fullMsg := append(lengthBuf, jsonMsg...)
+
+	for i, v := range n.Connections {
+		logger.Infof("Unicast message to Node %d, %v\n", i, v.RemoteAddr())
+	}
+	_, err = n.Connections[id].Write(fullMsg)
 	if err != nil {
 		logger.Errorf("Failed to send message to %s: %v", n.Connections[id].RemoteAddr(), err)
 	}

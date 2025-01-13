@@ -4,6 +4,7 @@ import (
 	"deukyunlee/hotstuff/block"
 	"deukyunlee/hotstuff/logging"
 	"deukyunlee/hotstuff/message"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -59,19 +60,16 @@ func NewNode(id, totalNodes, quorum uint64) *Node {
 func StartNewNode(nodeId uint64) *Node {
 	node := NewNode(nodeId, 4, 3)
 	
-	// 1. 먼저 서버를 시작하고 준비될 때까지 대기
 	serverReady := make(chan bool)
 	go node.startServer(nodeId, NodeTable[nodeId], serverReady)
 	
-	// 서버가 준비될 때까지 대기
 	<-serverReady
 	logger.Infof("Node %d: Server is ready and listening", nodeId)
 	
-	// 2. 잠시 대기하여 다른 노드들의 서버도 준비되도록 함
-	time.Sleep(time.Duration(nodeId) * time.Second)
+	time.Sleep(time.Second)
 	
-	// 3. 다른 노드들과 연결 시도
 	for otherId, otherAddress := range NodeTable {
+		logger.Infof("Connecting to Node %d\n", otherId)
 		if otherId != nodeId {
 			err := node.startClientWithRetry(otherId, otherAddress)
 			if err != nil {
@@ -161,28 +159,36 @@ func (n *Node) handleConnection(conn net.Conn) {
 	logger.Infof("Accepted connection from %s\n", conn.RemoteAddr().String())
 	
 	for {
-		buffer := make([]byte, 4096)
-		
-		rawMsg, err := conn.Read(buffer)
+		// 먼저 메시지 길이를 읽음
+		lengthBuf := make([]byte, 4)
+		_, err := io.ReadFull(conn, lengthBuf)
 		if err != nil {
 			if err != io.EOF {
-				logger.Errorf("Error reading from connection: %v", err)
+				logger.Errorf("Error reading message length: %v", err)
 			}
 			return
 		}
 		
-		if rawMsg > 0 {
-			var msg message.Message
-			err = json.Unmarshal(buffer[:rawMsg], &msg)
-			if err != nil {
-				logger.Errorf("Error unmarshalling message: %v\nRaw message: %s", err, string(buffer[:rawMsg]))
-				continue
-			}
-			
-			logger.Infof("[NodeId: %d] Received message: %+v", n.ID, msg)
-			
-			go n.ReceiveMessage(msg)
+		// 메시지 길이 해석
+		messageLength := binary.BigEndian.Uint32(lengthBuf)
+		
+		// 메시지 본문 읽기
+		messageBuf := make([]byte, messageLength)
+		_, err = io.ReadFull(conn, messageBuf)
+		if err != nil {
+			logger.Errorf("Error reading message body: %v", err)
+			return
 		}
+		
+		var msg message.Message
+		err = json.Unmarshal(messageBuf, &msg)
+		if err != nil {
+			logger.Errorf("Error unmarshalling message: %v\nRaw message: %s", err, string(messageBuf))
+			continue
+		}
+		
+		logger.Infof("[NodeId: %d] Received message: %+v", n.ID, msg)
+		go n.ReceiveMessage(msg)
 	}
 }
 
