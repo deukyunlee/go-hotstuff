@@ -43,9 +43,6 @@ func (n *Node) Unicast(msg message.Message, id uint64) {
 
 	fullMsg := append(lengthBuf, jsonMsg...)
 
-	for i, v := range n.Connections {
-		logger.Infof("Unicast message to Node %d, %v\n", i, v.RemoteAddr())
-	}
 	_, err = n.Connections[id].Write(fullMsg)
 	if err != nil {
 		logger.Errorf("Failed to send message to %s: %v", n.Connections[id].RemoteAddr(), err)
