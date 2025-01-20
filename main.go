@@ -21,11 +21,6 @@ func init() {
 	GenerateSecrets = *genFlag
 }
 
-// node.ValidateBlock 변경 로직: 블록 validation 로직 추가: node.ValidateBlock
-// message에 view 추가: message.Message
-// decide phase 추가: node.decide
-
-// TODO: 자신이 보고 있는 view와 message의 view가 일치하는지 확인
 // TODO: 밸리데이터 sig 검증 추가
 
 const (

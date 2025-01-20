@@ -42,6 +42,11 @@ type Node struct {
 	Connections     map[uint64]net.Conn
 	LocalConnection net.Conn
 	IsLeader        bool
+	RecentIntervals []time.Duration 
+	WindowSize      int          
+	TotalInterval   time.Duration     
+	BlockCount      int              
+	LastBlockTime   time.Time          
 }
 
 func NewNode(id, totalNodes, quorum uint64) *Node {
@@ -54,6 +59,11 @@ func NewNode(id, totalNodes, quorum uint64) *Node {
 		MsgBuffer:   make(map[message.MessageType][]message.Message),
 		Connections: make(map[uint64]net.Conn),
 		Quorum:      quorum,
+		RecentIntervals: make([]time.Duration, 0),
+		WindowSize: 10,  
+		TotalInterval: 0,
+		BlockCount: 0,
+		LastBlockTime: time.Now(),
 	}
 }
 
