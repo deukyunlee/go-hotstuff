@@ -24,7 +24,7 @@ func (n *Node) ReplyPrepare(msg message.Message) {
 
 func (n *Node) HandlePrepareReply(msg message.Message) {
 	if !n.IsLeaderNode() {
-		logger.Errorf("Node %d: Cannot handle PrepareReply. Only the leader can process this message.\n", n.ID)
+		logger.Errorf("Cannot handle PrepareReply. Only the leader can process this message.\n")
 		return
 	}
 
