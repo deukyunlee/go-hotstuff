@@ -60,7 +60,14 @@ func main() {
 			View:     0,
 		}
 
-		n.Propose(msg)
+		for {
+			time.Sleep(100 * time.Millisecond)
+
+			if (len(n.Connections)>=3){
+				n.Propose(msg)
+				break
+			}
+		}
 	}
 
 	for {

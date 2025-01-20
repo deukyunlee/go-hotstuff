@@ -30,6 +30,8 @@ func (n *Node) HandleCommitReply(msg message.Message) {
 		logger.Infof("Leader Node %d: Quorum reached in Commit phase. Block committed.\n", n.ID)
 		n.Committed = append(n.Committed, n.PendingBlock)
 
+		logger.Infof("Block %d, hash: %s is now decided. Current view: %d\n",msg.Block.Number, msg.Block.Hash, n.View)
+
 		n.Broadcast(message.Message{
 			Type:     message.Decide,
 			Block:    n.PendingBlock,

@@ -8,11 +8,11 @@ import (
 func (n *Node) HandleDecide(msg message.Message) {
 	logger.Infof("Received Decide for block %s. Finalizing...\n",msg.Block.Hash)
 
+	logger.Infof("Block %d, hash: %s is now decided. Current view: %d\n",msg.Block.Number, msg.Block.Hash, n.View)
+
 	if msg.View >= n.View {
 		n.View = msg.View + 1
 	}
-
-	logger.Infof("Block %d, hash: %s is now decided. Current view: %d\n",msg.Block.Number, msg.Block.Hash, n.View)
 
 	newBlock := block.CreateBlock(msg.Block, "")
 	newMsg := message.Message{
