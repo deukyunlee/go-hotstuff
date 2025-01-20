@@ -187,7 +187,6 @@ func (n *Node) handleConnection(conn net.Conn) {
 			continue
 		}
 		
-		logger.Infof("[NodeId: %d] Received message: %+v", n.ID, msg)
 		go n.ReceiveMessage(msg)
 	}
 }
