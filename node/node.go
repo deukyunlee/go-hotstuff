@@ -42,74 +42,74 @@ type Node struct {
 	Connections     map[uint64]net.Conn
 	LocalConnection net.Conn
 	IsLeader        bool
-	RecentIntervals []time.Duration 
-	WindowSize      int          
-	TotalInterval   time.Duration     
-	BlockCount      int              
-	LastBlockTime   time.Time          
+	RecentIntervals []time.Duration
+	WindowSize      int
+	TotalInterval   time.Duration
+	BlockCount      int
+	LastBlockTime   time.Time
 }
 
 func NewNode(id, totalNodes, quorum uint64) *Node {
 
 	return &Node{
-		ID:          id,
-		View:        0,
-		TotalNodes:  totalNodes,
-		BlockChain:  make(map[string]*block.Block),
-		MsgBuffer:   make(map[message.MessageType][]message.Message),
-		Connections: make(map[uint64]net.Conn),
-		Quorum:      quorum,
+		ID:              id,
+		View:            0,
+		TotalNodes:      totalNodes,
+		BlockChain:      make(map[string]*block.Block),
+		MsgBuffer:       make(map[message.MessageType][]message.Message),
+		Connections:     make(map[uint64]net.Conn),
+		Quorum:          quorum,
 		RecentIntervals: make([]time.Duration, 0),
-		WindowSize: 10,  
-		TotalInterval: 0,
-		BlockCount: 0,
-		LastBlockTime: time.Now(),
+		WindowSize:      10,
+		TotalInterval:   0,
+		BlockCount:      0,
+		LastBlockTime:   time.Now(),
 	}
 }
 
 func StartNewNode(nodeId uint64) *Node {
 	node := NewNode(nodeId, 4, 3)
-	
+
 	serverReady := make(chan bool)
 	go node.startServer(nodeId, NodeTable[nodeId], serverReady)
-	
+
 	<-serverReady
 	logger.Infof("Node %d: Server is ready and listening", nodeId)
-	
+
 	time.Sleep(time.Second)
-	
+
 	for otherId, otherAddress := range NodeTable {
 		logger.Infof("Connecting to Node %d\n", otherId)
 		if otherId != nodeId {
 			err := node.startClientWithRetry(otherId, otherAddress)
 			if err != nil {
-				logger.Errorf("Node %d: Failed to connect to node %d after %d attempts: %v\n", 
+				logger.Errorf("Failed to connect to node %d after %d attempts: %v\n",
 					nodeId, otherId, RetryCount, err)
 				panic(err)
 			}
 		}
 	}
-	
+
 	return node
 }
 
 func (n *Node) startServer(nodeId uint64, address string, ready chan bool) {
 	ln, err := net.Listen(TcpNetworkType, address)
 	if err != nil {
-		logger.Errorf("Node %d: Error starting server: %v\n", nodeId, err)
+		logger.Errorf("Error starting server: %v\n", nodeId, err)
 		panic(err)
 	}
-	
+
 	logger.Infof("Node %d: Server started on %s", nodeId, address)
 	ready <- true
-	
+
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			logger.Errorf("Node %d: Failed to accept connection: %v\n", nodeId, err)
+			logger.Errorf("Failed to accept connection: %v\n", nodeId, err)
 			continue
 		}
-		
+
 		logger.Infof("Node %d: Connection accepted from %s\n", nodeId, conn.RemoteAddr().String())
 		n.LocalConnection = conn
 		go n.handleConnection(conn)
@@ -119,22 +119,22 @@ func (n *Node) startServer(nodeId uint64, address string, ready chan bool) {
 func (n *Node) startClientWithRetry(otherId uint64, otherAddress string) error {
 	var err error
 	var conn net.Conn
-	
+
 	const maxRetries = 15
 	const initialDelay = 1 * time.Second
-	
+
 	for i := 0; i < maxRetries; i++ {
 		conn, err = n.startClient(otherId, otherAddress)
 		if err == nil {
 			n.Connections[otherId] = conn
 			return nil
 		}
-		
+
 		delay := initialDelay * time.Duration(i+1)
-		logger.Infof("Retrying connection to Node %d in %v (attempt %d/%d)",otherId, delay, i+1, maxRetries)
+		logger.Infof("Retrying connection to Node %d in %v (attempt %d/%d)", otherId, delay, i+1, maxRetries)
 		time.Sleep(delay)
 	}
-	
+
 	return fmt.Errorf("failed to connect after %d attempts: %v", maxRetries, err)
 }
 
@@ -167,7 +167,7 @@ func (n *Node) startServerWithRetry(nodeId uint64, ln net.Listener) (conn net.Co
 
 func (n *Node) handleConnection(conn net.Conn) {
 	logger.Infof("Accepted connection from %s\n", conn.RemoteAddr().String())
-	
+
 	for {
 		// 먼저 메시지 길이를 읽음
 		lengthBuf := make([]byte, 4)
@@ -178,10 +178,10 @@ func (n *Node) handleConnection(conn net.Conn) {
 			}
 			return
 		}
-		
+
 		// 메시지 길이 해석
 		messageLength := binary.BigEndian.Uint32(lengthBuf)
-		
+
 		// 메시지 본문 읽기
 		messageBuf := make([]byte, messageLength)
 		_, err = io.ReadFull(conn, messageBuf)
@@ -189,14 +189,14 @@ func (n *Node) handleConnection(conn net.Conn) {
 			logger.Errorf("Error reading message body: %v", err)
 			return
 		}
-		
+
 		var msg message.Message
 		err = json.Unmarshal(messageBuf, &msg)
 		if err != nil {
 			logger.Errorf("Error unmarshalling message: %v\nRaw message: %s", err, string(messageBuf))
 			continue
 		}
-		
+
 		go n.ReceiveMessage(msg)
 	}
 }
